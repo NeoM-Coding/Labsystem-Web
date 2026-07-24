@@ -6,14 +6,21 @@ import {
   getOrganizationOptions,
 } from '../api/laboratories'
 import { useLaboratoryFilterStore } from '../store/laboratoryFilterStore'
-import type { OptionPair } from '../types'
+import type { Laboratory, OptionPair } from '../types'
+
+interface SelectOption {
+  value: string
+  label: string
+  description?: string
+}
 
 interface MultiSelectMenuProps {
   label: string
   values: string[]
-  options: string[]
+  options: SelectOption[]
   isLoading: boolean
   onChange: (values: string[]) => void
+  emptySummary?: string
 }
 
 export interface LaboratoryFilterDataSource {
@@ -63,6 +70,7 @@ function MultiSelectMenu({
   options,
   isLoading,
   onChange,
+  emptySummary,
 }: MultiSelectMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -94,17 +102,24 @@ function MultiSelectMenu({
     )
   }
 
+  const selectedLabel = options.find((option) => option.value === values[0])?.label
+  const selectedNames = values
+    .map((value) => options.find((option) => option.value === value)?.label ?? value)
+    .join('、')
   const summary = values.length === 0
-    ? `全部${label}`
+    ? emptySummary ?? `全部${label}`
     : values.length === 1
-      ? values[0]
-      : `${values.length} 项${label}`
+      ? selectedLabel ?? values[0]
+      : selectedNames
 
   return (
-    <div className="relative min-w-[178px] max-sm:w-full" ref={rootRef}>
+    <div
+      className="relative w-[clamp(178px,20vw,300px)] shrink-0 max-sm:w-full"
+      ref={rootRef}
+    >
       <button
         type="button"
-        className={`group flex min-h-[46px] w-full cursor-pointer items-center justify-between gap-3 rounded-xl border px-[13px] py-[7px] pr-[11px] text-left transition-[border-color,background-color,box-shadow,transform] duration-150 ease-out active:scale-[.98] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-emerald-600/20 motion-reduce:transition-none ${
+        className={`group flex min-h-[54px] w-full cursor-pointer items-center justify-between gap-3 rounded-xl border px-[13px] py-[7px] pr-[10px] text-left transition-[border-color,background-color,box-shadow,transform] duration-150 ease-out active:scale-[.98] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-emerald-600/20 motion-reduce:transition-none ${
           values.length
             ? 'border-[#8fc9b2] bg-[#f0faf6]'
             : 'border-[#dce6e1] bg-[#f8fbf9]/90 hover:border-[#b9d4c8] hover:bg-white'
@@ -115,11 +130,23 @@ function MultiSelectMenu({
       >
         <span className="grid min-w-0 gap-0.5">
           <small className="text-[11px] font-semibold tracking-[.02em] text-[#77877f]">{label}</small>
-          <strong className={`max-w-[156px] truncate text-[13px] font-semibold ${values.length ? 'text-[#116b4b]' : 'text-[#243a32]'}`}>
+          <strong className={`block w-full truncate text-[13px] font-semibold ${values.length ? 'text-[#116b4b]' : 'text-[#243a32]'}`}>
             {summary}
           </strong>
         </span>
-        <ChevronIcon />
+        <span className="grid shrink-0 justify-items-center gap-0.5">
+          <span
+            className={`grid h-[18px] min-w-[18px] place-items-center rounded-full border px-1 text-[10px] font-extrabold tabular-nums transition-[border-color,background-color,color] duration-150 motion-reduce:transition-none ${
+              values.length > 0
+                ? 'border-[#8fc9b2] bg-[#dff3eb] text-[#116b4b]'
+                : 'border-[#d4dfda] bg-white/75 text-[#7b8a84]'
+            }`}
+            aria-label={`已选 ${values.length} 项`}
+          >
+            {values.length}
+          </span>
+          <ChevronIcon />
+        </span>
       </button>
 
       {isOpen && (
@@ -145,17 +172,17 @@ function MultiSelectMenu({
             ) : options.length === 0 ? (
               <div className="px-[10px] py-[18px] text-center text-[13px] text-[#84928c]">暂无可用选项</div>
             ) : options.map((option) => {
-              const checked = values.includes(option)
+              const checked = values.includes(option.value)
               return (
                 <label
                   className="flex min-h-10 cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-[7px] text-[13px] text-[#293b34] transition-[background-color,transform] duration-100 ease-out hover:bg-[#edf7f3] active:scale-[.985] has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-emerald-600/20 motion-reduce:transition-none"
-                  key={option}
+                  key={option.value}
                 >
                   <input
                     className="pointer-events-none absolute size-px opacity-0"
                     type="checkbox"
                     checked={checked}
-                    onChange={() => toggle(option)}
+                    onChange={() => toggle(option.value)}
                   />
                   <span
                     className={`grid size-[19px] shrink-0 place-items-center rounded-md border-[1.5px] text-xs font-extrabold text-white transition-[background-color,border-color,transform] duration-150 motion-reduce:transition-none ${
@@ -165,7 +192,14 @@ function MultiSelectMenu({
                   >
                     {checked && '✓'}
                   </span>
-                  <span>{option}</span>
+                  <span className="grid min-w-0 gap-0.5">
+                    <span className="truncate">{option.label}</span>
+                    {option.description && (
+                      <small className="truncate text-[10px] font-normal text-[#819089]">
+                        {option.description}
+                      </small>
+                    )}
+                  </span>
                 </label>
               )
             })}
@@ -184,14 +218,28 @@ function uniqueOptionNames(options: OptionPair[] | undefined) {
   )]
 }
 
+function namedOptions(names: string[]): SelectOption[] {
+  return names.map((name) => ({ value: name, label: name }))
+}
+
+function laboratoryOptions(laboratories: Laboratory[] | undefined): SelectOption[] {
+  return (laboratories ?? []).map((laboratory) => ({
+    value: laboratory.id,
+    label: laboratory.laboratoryName,
+    description: `${laboratory.buildingName} · ${laboratory.orgName || '未设置单位'}`,
+  }))
+}
+
 export function LaboratoryFilterBar({
   dataSource = defaultDataSource,
   queryScope = 'application',
 }: LaboratoryFilterBarProps = {}) {
   const buildingNames = useLaboratoryFilterStore((state) => state.buildingNames)
   const orgNames = useLaboratoryFilterStore((state) => state.orgNames)
+  const laboratoryIds = useLaboratoryFilterStore((state) => state.laboratoryIds)
   const setBuildingNames = useLaboratoryFilterStore((state) => state.setBuildingNames)
   const setOrgNames = useLaboratoryFilterStore((state) => state.setOrgNames)
+  const setLaboratoryIds = useLaboratoryFilterStore((state) => state.setLaboratoryIds)
   const setResolution = useLaboratoryFilterStore((state) => state.setResolution)
   const clearFilters = useLaboratoryFilterStore((state) => state.clearFilters)
 
@@ -219,9 +267,14 @@ export function LaboratoryFilterBar({
     () => uniqueOptionNames(organizationsQuery.data),
     [organizationsQuery.data],
   )
-  const hasFilters = buildingNames.length > 0 || orgNames.length > 0
   const isResolving = laboratoriesQuery.isPending || laboratoriesQuery.isFetching
+  const availableLaboratories = laboratoriesQuery.data ?? []
+  const selectedCount = laboratoryIds.length
   const matchedCount = laboratoriesQuery.data?.length ?? 0
+  const allLaboratoriesSelected = matchedCount > 0 && selectedCount === matchedCount
+  const hasFilters = buildingNames.length > 0
+    || orgNames.length > 0
+    || !allLaboratoriesSelected
 
   useEffect(() => {
     setResolution(
@@ -250,16 +303,24 @@ export function LaboratoryFilterBar({
           <MultiSelectMenu
             label="楼栋"
             values={buildingNames}
-            options={buildingOptions}
+            options={namedOptions(buildingOptions)}
             isLoading={buildingsQuery.isPending}
             onChange={setBuildingNames}
           />
           <MultiSelectMenu
             label="所属单位"
             values={orgNames}
-            options={organizationOptions}
+            options={namedOptions(organizationOptions)}
             isLoading={organizationsQuery.isPending}
             onChange={setOrgNames}
+          />
+          <MultiSelectMenu
+            label="实验室"
+            values={laboratoryIds}
+            options={laboratoryOptions(availableLaboratories)}
+            isLoading={isResolving}
+            onChange={setLaboratoryIds}
+            emptySummary="未选择实验室"
           />
         </div>
 
@@ -273,9 +334,7 @@ export function LaboratoryFilterBar({
             <span>
               {isResolving
                 ? '正在匹配…'
-                : hasFilters
-                  ? `已匹配 ${matchedCount} 间`
-                  : `全部 ${matchedCount} 间`}
+                : `已选 ${selectedCount} / ${matchedCount} 间`}
             </span>
           )}
           {hasFilters && (

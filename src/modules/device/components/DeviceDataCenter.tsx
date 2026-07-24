@@ -6,8 +6,14 @@ import {
   selectVisibleGateways,
   useDeviceStore,
 } from '../store/deviceStore'
-import type { Device, DeviceTelemetry, Gateway, TelemetryRecord } from '../types'
+import type { Device, DeviceTelemetry, Gateway } from '../types'
 import type { DeviceControlDataSource } from '../control/types'
+import {
+  displayTelemetryValue,
+  isOpeningStatus,
+  prioritizedTelemetryEntries,
+  telemetryLabel,
+} from '../telemetryPresentation'
 import {
   DeviceEntitySwitchBar,
   DeviceTypeSwitchBar,
@@ -20,34 +26,6 @@ const deviceTypeName: Record<Device['deviceType'], string> = {
   Sensor: '传感器',
   CircuitBreak: '断路器',
   Light: '照明',
-}
-
-const telemetryLabel: Record<string, string> = {
-  temperature: '温度',
-  humidity: '湿度',
-  co2: 'CO₂',
-  opened: '开合',
-  locked: '锁定',
-  mode: '模式',
-  speed: '风速',
-  brightness: '亮度',
-  voltage: '电压',
-  current: '电流',
-  power: '功率',
-}
-
-function displayValue(key: string, value: TelemetryRecord[string]) {
-  if (value === null) return '—'
-  if (typeof value === 'boolean') return value ? '是' : '否'
-  const unit = key === 'temperature' ? ' °C'
-    : key === 'humidity' ? ' %'
-      : key === 'co2' ? ' ppm'
-        : key === 'brightness' ? ' %'
-          : key === 'voltage' ? ' V'
-            : key === 'current' ? ' A'
-              : key === 'power' ? ' W'
-                : ''
-  return `${String(value)}${unit}`
 }
 
 function StatusDot({ online }: { online: boolean }) {
@@ -74,6 +52,19 @@ const GridList = forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<'div'
 )
 GridList.displayName = 'GridList'
 
+const CompactGridList = forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<'div'>>(
+  ({ children, ...props }, ref) => (
+    <div
+      {...props}
+      ref={ref}
+      className="grid grid-cols-4 gap-3 pb-2 max-xl:grid-cols-3 max-lg:grid-cols-2 max-sm:grid-cols-1"
+    >
+      {children}
+    </div>
+  ),
+)
+CompactGridList.displayName = 'CompactGridList'
+
 interface DeviceCardProps {
   device: Device
   telemetry?: DeviceTelemetry
@@ -92,23 +83,26 @@ function DeviceCard({
   const select = useDeviceStore((state) => state.selectEntity)
   const toggleSelection = useDeviceStore((state) => state.toggleDeviceSelection)
   const clock = useDeviceStore((state) => state.clock)
-  const entries = Object.entries(telemetry?.record ?? {}).slice(0, 3)
-  return (
-    <button
-      type="button"
-      aria-pressed={selectionMode ? selected : undefined}
-      disabled={incompatible}
-      onClick={() => selectionMode ? toggleSelection(device.id) : select(device.id)}
-      className={`group relative min-h-52 w-full rounded-2xl border bg-white p-5 text-left transition-[border-color,box-shadow,transform,opacity] duration-150 active:scale-[.98] ${
-        selected
-          ? 'border-[#2c9971] shadow-[0_0_0_3px_rgb(44_153_113_/_15%),0_12px_34px_rgb(17_48_38_/_10%)]'
-          : 'border-[#dfe8e3] shadow-[0_8px_28px_rgb(17_48_38_/_5%)] hover:border-[#b9d7cb] hover:shadow-[0_12px_34px_rgb(17_48_38_/_9%)]'
-      } ${incompatible ? 'cursor-not-allowed opacity-45' : ''}`}
-    >
-      {selectionMode && (
+
+  if (selectionMode) {
+    return (
+      <button
+        type="button"
+        aria-pressed={selected}
+        disabled={incompatible}
+        onClick={() => toggleSelection(device.id)}
+        className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-xl border bg-white px-4 py-3 text-left transition-[border-color,box-shadow,transform,opacity] duration-150 active:scale-[.98] ${
+          selected
+            ? 'border-[#2c9971] shadow-[0_0_0_3px_rgb(44_153_113_/_14%)]'
+            : 'border-[#dfe8e3] shadow-[0_5px_18px_rgb(17_48_38_/_4%)] hover:border-[#b9d7cb]'
+        } ${incompatible ? 'cursor-not-allowed opacity-40' : ''}`}
+      >
+        <span className="min-w-0 truncate text-sm font-bold text-[#1b3029]">
+          {device.deviceName}
+        </span>
         <span
           aria-hidden="true"
-          className={`absolute right-4 top-4 grid h-6 w-6 place-items-center rounded-full border text-xs font-black transition-[background-color,border-color,color] duration-150 ${
+          className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-xs font-black transition-[background-color,border-color,color] duration-150 ${
             selected
               ? 'border-[#16805a] bg-[#16805a] text-white'
               : 'border-[#c6d3ce] bg-white text-transparent'
@@ -116,22 +110,43 @@ function DeviceCard({
         >
           ✓
         </span>
-      )}
+      </button>
+    )
+  }
+
+  const entries = prioritizedTelemetryEntries(telemetry?.record ?? {})
+  return (
+    <button
+      type="button"
+      onClick={() => select(device.id)}
+      className={`group relative min-h-52 w-full rounded-2xl border bg-white p-5 text-left transition-[border-color,box-shadow,transform,opacity] duration-150 active:scale-[.98] ${
+        selected
+          ? 'border-[#2c9971] shadow-[0_0_0_3px_rgb(44_153_113_/_15%),0_12px_34px_rgb(17_48_38_/_10%)]'
+          : 'border-[#dfe8e3] shadow-[0_8px_28px_rgb(17_48_38_/_5%)] hover:border-[#b9d7cb] hover:shadow-[0_12px_34px_rgb(17_48_38_/_9%)]'
+      } ${incompatible ? 'cursor-not-allowed opacity-45' : ''}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="mb-1 truncate text-base font-bold text-[#1b3029]">{device.deviceName}</p>
           <p className="m-0 text-xs text-[#7a8983]">{deviceTypeName[device.deviceType]} · 地址 {device.address}</p>
         </div>
-        {!selectionMode && <StatusDot online={isTelemetryOnline(telemetry, clock)} />}
+        <StatusDot online={isTelemetryOnline(telemetry, clock)} />
       </div>
       <div className="mt-6 grid grid-cols-3 gap-2">
         {entries.length > 0 ? entries.map(([key, value]) => (
-          <div key={key} className="rounded-xl bg-[#f3f7f5] px-3 py-3">
+          <div
+            key={key}
+            className={`rounded-xl px-3 py-3 ${
+              isOpeningStatus(key) ? 'bg-[#e5f3ed]' : 'bg-[#f3f7f5]'
+            }`}
+          >
             <span className="block truncate text-[11px] font-semibold text-[#819089]">
               {telemetryLabel[key] ?? key}
             </span>
-            <strong className="mt-1 block truncate text-sm text-[#294039]">
-              {displayValue(key, value)}
+            <strong className={`mt-1 block truncate text-sm ${
+              isOpeningStatus(key) ? 'text-[#116b4b]' : 'text-[#294039]'
+            }`}>
+              {displayTelemetryValue(device.deviceType, key, value)}
             </strong>
           </div>
         )) : (
@@ -236,10 +251,10 @@ function DetailDrawer({ controlDataSource }: { controlDataSource?: DeviceControl
           <section className="mt-7">
             <h3 className="text-base">当前遥测</h3>
             <div className="grid grid-cols-2 gap-3">
-              {Object.entries(telemetry?.record ?? {}).map(([key, value]) => (
+              {prioritizedTelemetryEntries(telemetry?.record ?? {}, Number.POSITIVE_INFINITY).map(([key, value]) => (
                 <div className="rounded-xl border border-[#e0e8e4] p-4" key={key}>
                   <span className="block text-xs text-[#7c8a84]">{telemetryLabel[key] ?? key}</span>
-                  <strong className="mt-1 block">{displayValue(key, value)}</strong>
+                  <strong className="mt-1 block">{displayTelemetryValue(device.deviceType, key, value)}</strong>
                 </div>
               ))}
             </div>
@@ -346,9 +361,9 @@ export function DeviceDataCenter({
 
       {items.length === 0 ? <EmptyState entityMode={state.entityMode} /> : (
         <VirtuosoGrid
-          style={{ height: 620 }}
+          style={{ height: state.selectionMode ? 420 : 620 }}
           totalCount={items.length}
-          components={{ List: GridList }}
+          components={{ List: state.selectionMode ? CompactGridList : GridList }}
           itemContent={(index) => state.entityMode === 'device'
             ? (
               <DeviceCard
@@ -389,7 +404,7 @@ export function DeviceDataCenter({
               type="button"
               disabled={selectedDevices.length === 0}
               onClick={() => setMultiControlOpen(true)}
-              className="rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[#155c42] transition-[transform,opacity] duration-150 active:scale-[.97] disabled:opacity-45"
+              className="rounded-xl bg-[#f8fcfa] px-4 py-2.5 text-sm font-bold text-[#155c42] shadow-[0_1px_0_rgb(255_255_255_/_35%)] transition-[background-color,transform,opacity] duration-150 hover:bg-white active:scale-[.97] disabled:opacity-45"
             >
               开始控制
             </button>

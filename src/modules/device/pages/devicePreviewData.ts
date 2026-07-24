@@ -20,7 +20,7 @@ export function createPreviewSnapshots(now = Date.now()): DeviceTelemetrySnapsho
   const stale = new Date(now - 130_000).toISOString()
   return [
     { deviceId: 'dev-access-01', laboratoryId: 'lab-101', deviceType: 'Access', record: { opened: false, locked: true }, occurredAt: recent, online: true },
-    { deviceId: 'dev-air-01', laboratoryId: 'lab-101', deviceType: 'AirCondition', record: { temperature: 24, mode: 'cool', speed: 'medium' }, occurredAt: recent, online: true },
+    { deviceId: 'dev-air-01', laboratoryId: 'lab-101', deviceType: 'AirCondition', record: { opened: true, temperature: 24, mode: 'cool', speed: 'medium' }, occurredAt: recent, online: true },
     { deviceId: 'dev-sensor-01', laboratoryId: 'lab-102', deviceType: 'Sensor', record: { temperature: 23.6, humidity: 48, co2: 612 }, occurredAt: recent, online: true },
     { deviceId: 'dev-light-01', laboratoryId: 'lab-102', deviceType: 'Light', record: { opened: true, brightness: 72 }, occurredAt: recent, online: true },
     { deviceId: 'dev-light-02', laboratoryId: 'lab-102', deviceType: 'Light', record: { opened: false, brightness: 0 }, occurredAt: recent, online: true },

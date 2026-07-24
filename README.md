@@ -10,6 +10,10 @@ cp .env.example .env.local
 npm run dev
 ```
 
+开发服务器会默认将 `/api` 和 `/ws` 代理到后端 Web 服务
+`http://localhost:8989`。如果后端运行在其他地址，可通过
+`VITE_API_PROXY_TARGET` 覆盖。
+
 ## 目录约定
 
 ```text

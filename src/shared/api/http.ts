@@ -7,13 +7,22 @@ export const http = axios.create({
   withCredentials: true,
 })
 
-http.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().token
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
-
 http.interceptors.response.use(
   (response) => response,
-  (error: unknown) => Promise.reject(error),
+  (error: unknown) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      const isLoginRequest = error.config?.method === 'post'
+        && error.config.url?.replace(/\?.*$/, '').endsWith('/sessions')
+
+      if (!isLoginRequest) {
+        useAuthStore.getState().clearSession()
+        const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+        if (window.location.pathname !== '/login') {
+          const loginUrl = `/login?reason=expired&from=${encodeURIComponent(current)}`
+          window.location.replace(loginUrl)
+        }
+      }
+    }
+    return Promise.reject(error)
+  },
 )

@@ -27,7 +27,7 @@ export interface CommandOption {
 export interface CommandInputSpec {
   name: string
   label: string
-  help: string
+  unit?: string
   options?: CommandOption[]
   min?: number
   max?: number

@@ -12,7 +12,6 @@
 body { margin: 0; min-width: 320px; min-height: 100vh; }
 a { color: inherit; text-decoration: none; }
 button, input { font: inherit; }
-button { color: inherit; }
 h1, h2, p { margin-top: 0; }
 
 .app-shell { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
@@ -45,6 +44,39 @@ h1, h2, p { margin-top: 0; }
 .primary-button { display: inline-flex; justify-content: center; margin-top: 12px; padding: 12px 18px; border-radius: 10px; background: #147a56; color: white; font-weight: 700; }
 .page-loader { min-height: 240px; display: grid; place-items: center; }
 .page-loader span { width: 34px; height: 34px; border: 3px solid #cfe7de; border-top-color: #18825c; border-radius: 50%; animation: spin .8s linear infinite; }
+.control-range {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: grab;
+}
+.control-range:active { cursor: grabbing; }
+.control-range::-webkit-slider-runnable-track {
+  height: 24px;
+  background: transparent;
+}
+.control-range::-webkit-slider-thumb {
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 6px solid #16805a;
+  border-radius: 999px;
+  background: white;
+  box-shadow: 0 2px 8px rgb(16 73 53 / 24%);
+}
+.control-range::-moz-range-track {
+  height: 24px;
+  background: transparent;
+}
+.control-range::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: 6px solid #16805a;
+  border-radius: 999px;
+  background: white;
+  box-shadow: 0 2px 8px rgb(16 73 53 / 24%);
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes drawer-in { from { transform: translateX(24px); opacity: 0; } }
 @keyframes control-dialog-in {

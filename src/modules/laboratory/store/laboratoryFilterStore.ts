@@ -9,6 +9,7 @@ interface LaboratoryFilterState {
   isResolving: boolean
   setBuildingNames: (buildingNames: string[]) => void
   setOrgNames: (orgNames: string[]) => void
+  setLaboratoryIds: (laboratoryIds: string[]) => void
   setResolution: (laboratories: Laboratory[], isResolving: boolean) => void
   toggleLaboratory: (laboratoryId: string) => void
   selectAllLaboratories: () => void
@@ -24,6 +25,12 @@ export const useLaboratoryFilterStore = create<LaboratoryFilterState>((set) => (
   isResolving: true,
   setBuildingNames: (buildingNames) => set({ buildingNames }),
   setOrgNames: (orgNames) => set({ orgNames }),
+  setLaboratoryIds: (laboratoryIds) => set((state) => {
+    const availableIds = new Set(state.matchedLaboratories.map((laboratory) => laboratory.id))
+    return {
+      laboratoryIds: [...new Set(laboratoryIds)].filter((id) => availableIds.has(id)),
+    }
+  }),
   setResolution: (laboratories, isResolving) => {
     if (isResolving) {
       set({ isResolving: true })
@@ -44,5 +51,9 @@ export const useLaboratoryFilterStore = create<LaboratoryFilterState>((set) => (
     laboratoryIds: state.matchedLaboratories.map((laboratory) => laboratory.id),
   })),
   clearLaboratorySelection: () => set({ laboratoryIds: [] }),
-  clearFilters: () => set({ buildingNames: [], orgNames: [] }),
+  clearFilters: () => set((state) => ({
+    buildingNames: [],
+    orgNames: [],
+    laboratoryIds: state.matchedLaboratories.map((laboratory) => laboratory.id),
+  })),
 }))

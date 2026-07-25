@@ -2,7 +2,7 @@ import type { Device, DeviceTelemetrySnapshot, Gateway } from '../types'
 
 export const previewDevices: Device[] = [
   { id: 'dev-access-01', deviceName: '东门门禁', belongTo: 'lab-101', deviceType: 'Access', polling: true, gatewayId: 'gw-main', address: 1, locked: true },
-  { id: 'dev-air-01', deviceName: '中央空调 A', belongTo: 'lab-101', deviceType: 'AirCondition', polling: true, gatewayId: 'gw-main', address: 2, selfId: 1 },
+  { id: 'dev-air-01', deviceName: '中央空调 A', belongTo: 'lab-101', deviceType: 'AirCondition', polling: true, gatewayId: 'gw-main', address: 2, selfId: 1, groupId: 'air-group-01' },
   { id: 'dev-sensor-01', deviceName: '环境传感器', belongTo: 'lab-102', deviceType: 'Sensor', polling: true, gatewayId: 'gw-main', address: 3, selfId: 1 },
   { id: 'dev-light-01', deviceName: '实验区照明', belongTo: 'lab-102', deviceType: 'Light', polling: true, gatewayId: 'gw-secondary', address: 4, selfId: 1 },
   { id: 'dev-light-02', deviceName: '走廊照明', belongTo: 'lab-102', deviceType: 'Light', polling: true, gatewayId: 'gw-secondary', address: 7, selfId: 1 },

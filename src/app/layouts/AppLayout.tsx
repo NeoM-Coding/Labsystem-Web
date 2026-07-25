@@ -3,8 +3,36 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/modules/auth/store/authStore'
 import { deleteSession } from '@/modules/auth/api/sessions'
 import { useDeviceStore } from '@/modules/device/store/deviceStore'
-import { LaboratoryFilterBar } from '@/modules/laboratory/components/LaboratoryFilterBar'
+import { DeviceRuntime } from '@/modules/device/components/DeviceRuntime'
 import { queryClient } from '@/shared/lib/queryClient'
+
+const navigationItems = [
+  { to: '/dashboard', label: '工作台', icon: 'dashboard' },
+  { to: '/previews/laboratory-filter', label: '筛选栏预览', icon: 'filter' },
+  { to: '/previews/device-switch-bars', label: '设备切换栏预览', icon: 'switch' },
+  { to: '/previews/device-data-center', label: '设备中心预览', icon: 'grid' },
+  { to: '/previews/device-control', label: '设备控制预览', icon: 'control' },
+  { to: '/previews/device-management', label: '设备管理预览', icon: 'manage' },
+] as const
+
+type NavigationIconName = typeof navigationItems[number]['icon'] | 'device'
+
+function NavigationIcon({ name }: { name: NavigationIconName }) {
+  const path = {
+    dashboard: 'M3 3h7v7H3zM14 3h7v4h-7zM14 11h7v10h-7zM3 14h7v7H3z',
+    device: 'M5 4h14v12H5zM9 20h6M12 16v4M8 8h8',
+    filter: 'M4 5h16M7 12h10M10 19h4',
+    switch: 'M7 7h13m0 0-3-3m3 3-3 3M17 17H4m0 0 3-3m-3 3 3 3',
+    grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+    control: 'M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6',
+    manage: 'M4 5h16v14H4zM8 9h8M8 13h5',
+  }[name]
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="nav-icon">
+      <path d={path} />
+    </svg>
+  )
+}
 
 export function AppLayout() {
   const user = useAuthStore((state) => state.user)
@@ -13,8 +41,20 @@ export function AppLayout() {
   const navigate = useNavigate()
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => window.localStorage.getItem('lab-sidebar-collapsed') === 'true',
+  )
+  const [deviceMenuOpen, setDeviceMenuOpen] = useState(
+    () => window.location.pathname.startsWith('/devices'),
+  )
   const isComponentPreview = location.pathname.startsWith('/previews/')
-
+  const toggleSidebar = () => {
+    setSidebarCollapsed((collapsed) => {
+      const next = !collapsed
+      window.localStorage.setItem('lab-sidebar-collapsed', String(next))
+      return next
+    })
+  }
   const logout = async () => {
     setLoggingOut(true)
     setLogoutError(null)
@@ -31,16 +71,54 @@ export function AppLayout() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-sidebar-collapsed={sidebarCollapsed}>
+      {!isComponentPreview && <DeviceRuntime />}
       <aside className="sidebar">
-        <div className="brand"><span>LAB</span><strong>实验室管理系统</strong></div>
+        <div className="brand">
+          <span>LAB</span>
+          <strong className="sidebar-label">实验室管理系统</strong>
+        </div>
+        <button
+          type="button"
+          className="sidebar-collapse-button"
+          aria-label={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
+          aria-expanded={!sidebarCollapsed}
+          onClick={toggleSidebar}
+        >
+          <svg aria-hidden="true" viewBox="0 0 20 20">
+            <path d="m12.5 5-5 5 5 5" />
+          </svg>
+        </button>
         <nav className="nav-list" aria-label="主导航">
-          <NavLink to="/dashboard">工作台</NavLink>
-          <NavLink to="/devices">设备中心</NavLink>
-          <NavLink to="/previews/laboratory-filter">筛选栏预览</NavLink>
-          <NavLink to="/previews/device-switch-bars">设备切换栏预览</NavLink>
-          <NavLink to="/previews/device-data-center">设备中心预览</NavLink>
-          <NavLink to="/previews/device-control">设备控制预览</NavLink>
+          <NavLink to="/dashboard" title={sidebarCollapsed ? '工作台' : undefined}>
+            <NavigationIcon name="dashboard" />
+            <span className="sidebar-label">工作台</span>
+          </NavLink>
+          <div className="nav-group" data-open={deviceMenuOpen}>
+            <button
+              type="button"
+              className={location.pathname.startsWith('/devices') ? 'active' : ''}
+              aria-expanded={deviceMenuOpen}
+              title={sidebarCollapsed ? '设备中心' : undefined}
+              onClick={() => setDeviceMenuOpen((open) => !open)}
+            >
+              <NavigationIcon name="device" />
+              <span className="sidebar-label">设备中心</span>
+              <svg aria-hidden="true" className="nav-group-chevron sidebar-label" viewBox="0 0 20 20"><path d="m6.5 8 3.5 3.5L13.5 8" /></svg>
+            </button>
+            {deviceMenuOpen && (
+              <div className="nav-submenu">
+                <NavLink end to="/devices" title={sidebarCollapsed ? '数据中心' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">数据中心</span></NavLink>
+                <NavLink to="/devices/manage" title={sidebarCollapsed ? '设备管理' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">设备管理</span></NavLink>
+              </div>
+            )}
+          </div>
+          {navigationItems.slice(1).map((item) => (
+            <NavLink key={item.to} to={item.to} title={sidebarCollapsed ? item.label : undefined}>
+              <NavigationIcon name={item.icon} />
+              <span className="sidebar-label">{item.label}</span>
+            </NavLink>
+          ))}
         </nav>
       </aside>
       <div className="main-area">
@@ -63,9 +141,6 @@ export function AppLayout() {
             </button>
           </div>
         </header>
-        {!isComponentPreview && (
-          <LaboratoryFilterBar />
-        )}
         <main className="page-content"><Outlet /></main>
       </div>
     </div>

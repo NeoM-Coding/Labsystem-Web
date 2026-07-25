@@ -14,6 +14,7 @@ const LaboratoryFilterPreviewPage = lazy(
   () => import('@/modules/laboratory/pages/LaboratoryFilterPreviewPage'),
 )
 const DeviceCenterPage = lazy(() => import('@/modules/device/pages/DeviceCenterPage'))
+const DeviceManagementPage = lazy(() => import('@/modules/device/pages/DeviceManagementPage'))
 const DeviceSwitchBarsPreviewPage = lazy(
   () => import('@/modules/device/pages/DeviceSwitchBarsPreviewPage'),
 )
@@ -22,6 +23,9 @@ const DeviceDataCenterPreviewPage = lazy(
 )
 const DeviceControlPreviewPage = lazy(
   () => import('@/modules/device/pages/DeviceControlPreviewPage'),
+)
+const DeviceManagementPreviewPage = lazy(
+  () => import('@/modules/device/pages/DeviceManagementPreviewPage'),
 )
 
 const render = (element: React.ReactNode) => (
@@ -45,6 +49,7 @@ export const router = createBrowserRouter([
           { index: true, element: <Navigate to="/dashboard" replace /> },
           { path: 'dashboard', element: render(<DashboardPage />) },
           { path: 'devices', element: render(<DeviceCenterPage />) },
+          { path: 'devices/manage', element: render(<DeviceManagementPage />) },
           {
             path: 'previews/laboratory-filter',
             element: render(<LaboratoryFilterPreviewPage />),
@@ -60,6 +65,10 @@ export const router = createBrowserRouter([
           {
             path: 'previews/device-control',
             element: render(<DeviceControlPreviewPage />),
+          },
+          {
+            path: 'previews/device-management',
+            element: render(<DeviceManagementPreviewPage />),
           },
         ],
       },

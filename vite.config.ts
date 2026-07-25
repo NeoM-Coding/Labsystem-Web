@@ -23,6 +23,10 @@ export default defineConfig(({ mode }) => {
           target: proxyTarget,
           changeOrigin: true,
           ws: true,
+          // Spring validates the WebSocket Origin. The dev server may move from
+          // 5173 to another free port, so forward the backend target origin
+          // instead of the transient Vite origin.
+          rewriteWsOrigin: true,
         },
       },
     },

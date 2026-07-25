@@ -32,6 +32,7 @@ export interface LaboratoryFilterDataSource {
 interface LaboratoryFilterBarProps {
   dataSource?: LaboratoryFilterDataSource
   queryScope?: string
+  embedded?: boolean
 }
 
 const defaultDataSource: LaboratoryFilterDataSource = {
@@ -114,7 +115,7 @@ function MultiSelectMenu({
 
   return (
     <div
-      className="relative w-[clamp(178px,20vw,300px)] shrink-0 max-sm:w-full"
+      className="relative min-w-0 w-full"
       ref={rootRef}
     >
       <button
@@ -151,7 +152,7 @@ function MultiSelectMenu({
 
       {isOpen && (
         <div
-          className="absolute top-[calc(100%+8px)] left-0 w-max min-w-full origin-top-left overflow-hidden rounded-[15px] border border-[#cddcd5]/90 bg-white/92 shadow-[0_18px_46px_rgb(16_52_40_/_16%)] backdrop-blur-2xl backdrop-saturate-150 transition duration-200 ease-out starting:-translate-y-1 starting:scale-[.98] starting:opacity-0 max-sm:relative max-sm:top-[5px] max-sm:mb-[5px] max-sm:w-full max-sm:shadow-[0_10px_28px_rgb(16_52_40_/_12%)] motion-reduce:transform-none motion-reduce:transition-none contrast-more:border-[#61736b] contrast-more:bg-white"
+          className="absolute top-[calc(100%+8px)] left-0 w-full min-w-[min(240px,calc(100vw-36px))] max-w-[min(360px,calc(100vw-36px))] origin-top-left overflow-hidden rounded-[15px] border border-[#cddcd5]/90 bg-white/92 shadow-[0_18px_46px_rgb(16_52_40_/_16%)] backdrop-blur-2xl backdrop-saturate-150 transition duration-200 ease-out starting:-translate-y-1 starting:scale-[.98] starting:opacity-0 max-sm:relative max-sm:top-[5px] max-sm:mb-[5px] max-sm:w-full max-sm:max-w-none max-sm:shadow-[0_10px_28px_rgb(16_52_40_/_12%)] motion-reduce:transform-none motion-reduce:transition-none contrast-more:border-[#61736b] contrast-more:bg-white"
           id={menuId}
         >
           <div className="flex items-center justify-between px-[13px] pt-3 pb-[9px] text-xs font-bold text-[#6c7d75]">
@@ -233,6 +234,7 @@ function laboratoryOptions(laboratories: Laboratory[] | undefined): SelectOption
 export function LaboratoryFilterBar({
   dataSource = defaultDataSource,
   queryScope = 'application',
+  embedded = false,
 }: LaboratoryFilterBarProps = {}) {
   const buildingNames = useLaboratoryFilterStore((state) => state.buildingNames)
   const orgNames = useLaboratoryFilterStore((state) => state.orgNames)
@@ -285,11 +287,11 @@ export function LaboratoryFilterBar({
 
   return (
     <section
-      className="relative z-10 px-8 pt-3.5 max-[900px]:px-[18px]"
+      className={`relative z-10 ${embedded ? '' : 'px-8 pt-3.5 max-[900px]:px-[18px]'}`}
       aria-label="实验室组合筛选"
     >
-      <div className="flex min-h-[68px] items-center gap-[18px] rounded-[18px] border border-[#ccdbd4]/80 bg-white/78 px-3 py-2.5 shadow-[0_12px_32px_rgb(24_63_49_/_7%)] backdrop-blur-[20px] backdrop-saturate-150 max-[900px]:flex-wrap max-[900px]:items-stretch max-[900px]:gap-2.5 contrast-more:border-[#61736b] contrast-more:bg-white">
-        <div className="flex items-center gap-2.5 py-0 pr-2 pl-0.5 max-[900px]:flex-1">
+      <div className="flex min-h-[68px] items-center gap-[18px] rounded-[18px] border border-[#ccdbd4]/80 bg-white/78 px-3 py-2.5 shadow-[0_12px_32px_rgb(24_63_49_/_7%)] backdrop-blur-[20px] backdrop-saturate-150 max-[1180px]:flex-wrap max-[1180px]:items-stretch max-[1180px]:gap-2.5 contrast-more:border-[#61736b] contrast-more:bg-white">
+        <div className="flex shrink-0 items-center gap-2.5 py-0 pr-2 pl-0.5 max-[1180px]:flex-1">
           <span className="grid size-[34px] place-items-center rounded-[11px] bg-[#e4f5ee] text-[#147a56]">
             <FilterIcon />
           </span>
@@ -299,7 +301,7 @@ export function LaboratoryFilterBar({
           </span>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-2 max-[900px]:order-3 max-[900px]:basis-full max-sm:flex-col max-sm:items-stretch">
+        <div className="grid min-w-0 flex-1 grid-cols-3 items-center gap-2 max-[1180px]:order-3 max-[1180px]:basis-full max-[700px]:grid-cols-1">
           <MultiSelectMenu
             label="楼栋"
             values={buildingNames}
@@ -325,7 +327,7 @@ export function LaboratoryFilterBar({
         </div>
 
         <div
-          className="flex min-w-32 items-center justify-end gap-2 whitespace-nowrap text-xs text-[#667870] tabular-nums max-sm:min-w-0"
+          className="flex shrink-0 items-center justify-end gap-2 whitespace-nowrap text-xs text-[#667870] tabular-nums max-[1180px]:ml-auto"
           aria-live="polite"
         >
           {laboratoriesQuery.isError ? (

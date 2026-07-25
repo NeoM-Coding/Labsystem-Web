@@ -229,6 +229,14 @@ export function DeviceControlDialog({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onClose, open, phase])
 
+  useEffect(() => {
+    const allSucceeded = results.length > 0 && results.every((result) => result.success)
+    if (!open || phase !== 'result' || !allSucceeded) return
+
+    const closeTimer = window.setTimeout(onClose, 2_000)
+    return () => window.clearTimeout(closeTimer)
+  }, [onClose, open, phase, results])
+
   if (!open) return null
 
   const chooseCommand = (commandLine: string) => {
@@ -308,6 +316,11 @@ export function DeviceControlDialog({
               <div className={`rounded-2xl p-5 ${successCount === results.length ? 'bg-emerald-50' : 'bg-amber-50'}`}>
                 <p className="mb-1 text-sm font-bold text-[#64756e]">执行完成</p>
                 <strong className="text-2xl">{successCount}/{results.length} 台成功</strong>
+                {results.length > 0 && successCount === results.length && (
+                  <p className="mt-2 mb-0 text-xs font-semibold text-emerald-700">
+                    控制成功，窗口将在 2 秒后自动关闭
+                  </p>
+                )}
               </div>
               <ul className="mt-4 grid list-none gap-2 p-0">
                 {results.map((result) => (

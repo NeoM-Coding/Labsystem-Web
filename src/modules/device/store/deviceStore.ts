@@ -20,6 +20,13 @@ const TELEMETRY_META_FIELDS = new Set([
   'deviceId', 'deviceType', 'laboratoryId', 'origin',
   'id', 'createAt', 'updateAt', 'deleteAt',
 ])
+const DEVICE_TYPES = new Set<Device['deviceType']>([
+  'Access',
+  'AirCondition',
+  'Sensor',
+  'CircuitBreak',
+  'Light',
+])
 
 interface DeviceState {
   devicesById: Record<string, Device>
@@ -105,6 +112,12 @@ function telemetryRecord(data: Record<string, unknown>): TelemetryRecord {
     }
   })
   return record
+}
+
+function deviceType(value: unknown): Device['deviceType'] | null {
+  return typeof value === 'string' && DEVICE_TYPES.has(value as Device['deviceType'])
+    ? value as Device['deviceType']
+    : null
 }
 
 export function isTelemetryOnline(telemetry: DeviceTelemetry | undefined, now = Date.now()) {
@@ -238,22 +251,37 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     }
   },
   applyRealtimeEvent: (event) => {
+    if (
+      event.version !== '1.0'
+      || event.resource.type !== 'device'
+      || !event.resource.laboratoryId
+      || !get().activeLaboratoryIds.includes(event.resource.laboratoryId)
+    ) {
+      return
+    }
+    if (
+      event.eventType !== 'device.telemetry.updated'
+      && event.eventType !== 'device.online.changed'
+    ) {
+      return
+    }
     if (!rememberEvent(event.eventId)) return
-    if (event.version !== '1.0') return
 
     if (event.eventType === 'device.telemetry.updated') {
       const laboratoryId = event.resource.laboratoryId
-      if (!laboratoryId || !get().activeLaboratoryIds.includes(laboratoryId)) return
       const deviceId = event.resource.id
       const existing = get().telemetryByDeviceId[deviceId]
       if (existing && timestamp(existing.occurredAt) >= timestamp(event.occurredAt)) return
+      const nextDeviceType = deviceType(event.data.deviceType)
+        ?? get().devicesById[deviceId]?.deviceType
+      if (!nextDeviceType) return
       set((state) => ({
         telemetryByDeviceId: {
           ...state.telemetryByDeviceId,
           [deviceId]: {
             deviceId,
             laboratoryId,
-            deviceType: String(event.data.deviceType) as DeviceTelemetry['deviceType'],
+            deviceType: nextDeviceType,
             record: telemetryRecord(event.data),
             occurredAt: event.occurredAt,
             receivedAt: new Date().toISOString(),

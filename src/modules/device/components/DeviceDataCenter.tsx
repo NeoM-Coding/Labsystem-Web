@@ -11,8 +11,8 @@ import type { DeviceControlDataSource } from '../control/types'
 import {
   displayTelemetryValue,
   isOpeningStatus,
-  prioritizedTelemetryEntries,
-  telemetryLabel,
+  telemetryEntriesForDevice,
+  telemetryLabelForDevice,
 } from '../telemetryPresentation'
 import {
   DeviceEntitySwitchBar,
@@ -114,7 +114,11 @@ function DeviceCard({
     )
   }
 
-  const entries = prioritizedTelemetryEntries(telemetry?.record ?? {})
+  const displayRecord = {
+    ...(typeof device.locked === 'boolean' ? { locked: device.locked } : {}),
+    ...(telemetry?.record ?? {}),
+  }
+  const entries = telemetryEntriesForDevice(device.deviceType, displayRecord)
   return (
     <button
       type="button"
@@ -132,7 +136,7 @@ function DeviceCard({
         </div>
         <StatusDot online={isTelemetryOnline(telemetry, clock)} />
       </div>
-      <div className="mt-6 grid grid-cols-3 gap-2">
+      <div className={`mt-6 grid gap-2 ${entries.length === 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
         {entries.length > 0 ? entries.map(([key, value]) => (
           <div
             key={key}
@@ -141,7 +145,7 @@ function DeviceCard({
             }`}
           >
             <span className="block truncate text-[11px] font-semibold text-[#819089]">
-              {telemetryLabel[key] ?? key}
+              {telemetryLabelForDevice(device.deviceType, key)}
             </span>
             <strong className={`mt-1 block truncate text-sm ${
               isOpeningStatus(key) ? 'text-[#116b4b]' : 'text-[#294039]'
@@ -204,6 +208,10 @@ function DetailDrawer({ controlDataSource }: { controlDataSource?: DeviceControl
   const close = useDeviceStore((state) => state.selectEntity)
   const entity = entityMode === 'device' ? device : gateway
   const [controlOpen, setControlOpen] = useState(false)
+  const displayRecord = {
+    ...(typeof device?.locked === 'boolean' ? { locked: device.locked } : {}),
+    ...(telemetry?.record ?? {}),
+  }
 
   useEffect(() => {
     if (!selectedId || controlOpen) return
@@ -236,6 +244,12 @@ function DetailDrawer({ controlDataSource }: { controlDataSource?: DeviceControl
             <dl className="grid grid-cols-[100px_1fr] gap-y-3 text-sm">
               <dt className="text-[#73827c]">设备类型</dt><dd className="m-0 font-semibold">{deviceTypeName[device.deviceType]}</dd>
               <dt className="text-[#73827c]">设备地址</dt><dd className="m-0 font-semibold">{device.address}</dd>
+              {device.deviceType === 'AirCondition' && (
+                <>
+                  <dt className="text-[#73827c]">内机编号</dt><dd className="m-0 font-semibold">{device.selfId ?? '—'}</dd>
+                  <dt className="text-[#73827c]">机组编号</dt><dd className="m-0 break-all font-mono text-xs">{device.groupId ?? '—'}</dd>
+                </>
+              )}
               <dt className="text-[#73827c]">网关 ID</dt><dd className="m-0 break-all font-mono text-xs">{device.gatewayId}</dd>
               <dt className="text-[#73827c]">设备 ID</dt><dd className="m-0 break-all font-mono text-xs">{device.id}</dd>
             </dl>
@@ -251,9 +265,9 @@ function DetailDrawer({ controlDataSource }: { controlDataSource?: DeviceControl
           <section className="mt-7">
             <h3 className="text-base">当前遥测</h3>
             <div className="grid grid-cols-2 gap-3">
-              {prioritizedTelemetryEntries(telemetry?.record ?? {}, Number.POSITIVE_INFINITY).map(([key, value]) => (
+              {telemetryEntriesForDevice(device.deviceType, displayRecord, 'detail').map(([key, value]) => (
                 <div className="rounded-xl border border-[#e0e8e4] p-4" key={key}>
-                  <span className="block text-xs text-[#7c8a84]">{telemetryLabel[key] ?? key}</span>
+                  <span className="block text-xs text-[#7c8a84]">{telemetryLabelForDevice(device.deviceType, key)}</span>
                   <strong className="mt-1 block">{displayTelemetryValue(device.deviceType, key, value)}</strong>
                 </div>
               ))}
@@ -304,35 +318,56 @@ export function DeviceDataCenter({
 
   return (
     <section aria-label="设备数据中心">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <DeviceEntitySwitchBar />
-        <div className="flex items-center gap-3 text-xs font-semibold text-[#73827c]">
-          <span>实时连接：{state.realtimeStatus === 'connected' ? '正常' : state.realtimeStatus}</span>
-          {state.entityMode === 'device' && <span>{onlineCount}/{devices.length} 在线</span>}
-          {state.entityMode === 'device' && (
-            <button
-              type="button"
-              onClick={state.selectionMode ? state.exitSelectionMode : state.enterSelectionMode}
-              className={`rounded-xl px-3 py-2 font-bold transition-[background-color,color,transform] duration-150 active:scale-[.97] ${
-                state.selectionMode ? 'bg-[#243b33] text-white' : 'bg-[#e8f2ee] text-[#176b4d]'
-              }`}
-            >
-              {state.selectionMode ? '退出选择' : '批量控制'}
-            </button>
-          )}
+      <div className="mb-5 rounded-2xl border border-[#dfe8e3] bg-white/90 p-3 shadow-[0_8px_30px_rgb(17_48_38_/_4%)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <DeviceEntitySwitchBar />
+          <div className="flex flex-wrap items-center justify-end gap-2.5 text-xs font-semibold text-[#73827c]">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#f2f6f4] px-2.5 py-2">
+              <span className={`size-2 rounded-full ${
+                state.realtimeStatus === 'connected' ? 'bg-[#32bd86]' : 'bg-amber-400'
+              }`} />
+              {state.realtimeStatus === 'connected' ? '实时连接正常' : `实时连接 ${state.realtimeStatus}`}
+            </span>
+            {state.entityMode === 'device' && (
+              <span className="rounded-lg bg-[#f2f6f4] px-2.5 py-2">{onlineCount}/{devices.length} 在线</span>
+            )}
+            {state.entityMode === 'device' && (
+              <button
+                type="button"
+                onClick={state.selectionMode ? state.exitSelectionMode : state.enterSelectionMode}
+                className={`rounded-lg px-3 py-2 font-bold transition-[background-color,color,transform] duration-150 active:scale-[.97] ${
+                  state.selectionMode ? 'bg-[#243b33] text-white' : 'bg-[#e8f2ee] text-[#176b4d]'
+                }`}
+              >
+                {state.selectionMode ? '退出选择' : '批量控制'}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="mb-5 rounded-2xl border border-[#dfe8e3] bg-white/90 p-4 shadow-[0_8px_30px_rgb(17_48_38_/_4%)]">
-        <div className="flex flex-wrap items-center gap-3">
-          {state.entityMode === 'device' && <DeviceTypeSwitchBar />}
-          <label className="relative min-w-52 flex-1">
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-[#e8eeeb] pt-3">
+          {state.entityMode === 'device' && (
+            <div className="min-w-0 max-w-full">
+              <DeviceTypeSwitchBar />
+            </div>
+          )}
+          <label className={`relative min-w-52 ${
+            state.entityMode === 'device' ? 'ml-auto w-[min(360px,100%)]' : 'w-[min(520px,100%)]'
+          } max-sm:ml-0 max-sm:w-full`}>
             <span className="sr-only">搜索设备或网关</span>
+            <svg
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 fill-none stroke-[#82918b] stroke-[1.8]"
+              viewBox="0 0 20 20"
+            >
+              <circle cx="8.5" cy="8.5" r="5.5" />
+              <path d="m12.5 12.5 4 4" />
+            </svg>
             <input
               value={state.search}
               onChange={(event) => state.setSearch(event.target.value)}
               placeholder={state.entityMode === 'device' ? '搜索设备名称、ID 或地址' : '搜索网关名称、ID 或 Topic'}
-              className="h-11 w-full rounded-xl border border-[#dbe5e0] bg-[#f8faf9] px-4 text-sm outline-none transition-[border-color,box-shadow] focus:border-[#4ba786] focus:shadow-[0_0_0_3px_rgb(75_167_134_/_13%)]"
+              className="h-10 w-full rounded-xl border border-[#dbe5e0] bg-[#f8faf9] pr-4 pl-10 text-sm outline-none transition-[border-color,box-shadow] focus:border-[#4ba786] focus:shadow-[0_0_0_3px_rgb(75_167_134_/_13%)]"
             />
           </label>
           {state.entityMode === 'device' && (
@@ -340,7 +375,7 @@ export function DeviceDataCenter({
               value={state.onlineFilter}
               onChange={(event) => state.setOnlineFilter(event.target.value as typeof state.onlineFilter)}
               aria-label="在线状态"
-              className="h-11 rounded-xl border border-[#dbe5e0] bg-white px-3 text-sm font-semibold"
+              className="h-10 rounded-xl border border-[#dbe5e0] bg-white px-3 text-sm font-semibold"
             >
               <option value="all">全部状态</option>
               <option value="online">仅在线</option>

@@ -1,4 +1,5 @@
 import type { DeviceType, TelemetryRecord } from './types'
+import { deviceField, displayDeviceFieldValue } from './deviceFieldCatalog'
 
 const openingKeys = new Set(['opened', 'isOpen'])
 
@@ -42,7 +43,10 @@ const deviceTelemetryLabels: Partial<Record<DeviceType, Record<string, string>>>
 }
 
 export function telemetryLabelForDevice(deviceType: DeviceType, key: string) {
-  return deviceTelemetryLabels[deviceType]?.[key] ?? telemetryLabel[key] ?? key
+  return deviceTelemetryLabels[deviceType]?.[key]
+    ?? deviceField(deviceType, key)?.label
+    ?? telemetryLabel[key]
+    ?? key
 }
 
 const summaryFieldOrder: Record<DeviceType, readonly string[]> = {
@@ -88,6 +92,11 @@ export function displayTelemetryValue(
   value: TelemetryRecord[string],
 ) {
   if (value === null) return '—'
+  const catalogField = deviceField(deviceType, key)
+  if (catalogField?.kind === 'enum') {
+    const catalogValue = displayDeviceFieldValue(deviceType, key, value)
+    if (catalogValue !== String(value)) return catalogValue
+  }
   if (openingKeys.has(key) && typeof value === 'boolean') {
     if (deviceType === 'CircuitBreak') return value ? '合闸' : '分闸'
     return value ? '开启' : '关闭'

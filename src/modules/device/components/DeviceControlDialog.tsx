@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { deviceControlDataSource } from '../api/deviceControl'
-import { commandsFor, initialArgs } from '../control/commandCatalog'
+import { commandArgsAreValid, commandsFor, initialArgs } from '../control/commandCatalog'
 import type {
   CommandInputSpec,
   DeviceCommandResult,
-  DeviceCommandSpec,
   DeviceControlDialogProps,
 } from '../control/types'
 
@@ -177,21 +176,6 @@ function ParameterSwitcher({
       </div>
     </div>
   )
-}
-
-function commandArgsAreValid(spec: DeviceCommandSpec, args: number[]) {
-  if (args.length !== spec.inputs.length) return false
-  const valuesValid = spec.inputs.every((input, index) => {
-    const value = args[index]
-    if (!Number.isInteger(value)) return false
-    if (input.options) return input.options.some((option) => option.value === value)
-    return value >= (input.min ?? 0) && value <= (input.max ?? 255)
-  })
-  if (!valuesValid) return false
-  if (spec.commandLine === 'ENHANCE_CONTROL_AIR_CONDITION') {
-    return args.some((value) => value !== 255)
-  }
-  return true
 }
 
 export function DeviceControlDialog({

@@ -57,3 +57,18 @@ export function commandsFor(deviceType: DeviceType) {
 export function initialArgs(spec: DeviceCommandSpec) {
   return spec.inputs.map((input) => input.options ? input.options[0].value : input.min ?? 0)
 }
+
+export function commandArgsAreValid(spec: DeviceCommandSpec, args: number[]) {
+  if (args.length !== spec.inputs.length) return false
+  const valuesValid = spec.inputs.every((input, index) => {
+    const value = args[index]
+    if (!Number.isInteger(value)) return false
+    if (input.options) return input.options.some((option) => option.value === value)
+    return value >= (input.min ?? 0) && value <= (input.max ?? 255)
+  })
+  if (!valuesValid) return false
+  if (spec.commandLine === 'ENHANCE_CONTROL_AIR_CONDITION') {
+    return args.some((value) => value !== 255)
+  }
+  return true
+}

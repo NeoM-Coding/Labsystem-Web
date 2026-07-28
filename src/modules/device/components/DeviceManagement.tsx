@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { Laboratory } from '@/modules/laboratory/types'
+import { useDeviceStore } from '../store/deviceStore'
 import type { Device, DeviceType, Gateway } from '../types'
 
 export interface DeviceManagementDataSource {
   listDevices: (laboratoryIds?: string[]) => Promise<Device[]>
   listGateways: (laboratoryIds?: string[]) => Promise<Gateway[]>
+  getDevice: (deviceId: string) => Promise<Device>
+  getGateway: (gatewayId: string) => Promise<Gateway>
   listLaboratories: () => Promise<Laboratory[]>
   createDevice: (device: DeviceDraft) => Promise<Device>
   updateDevice: (deviceId: string, device: DeviceDraft) => Promise<Device>
@@ -272,6 +275,7 @@ export function DeviceManagement({
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pollingDeviceIds, setPollingDeviceIds] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const [editor, setEditor] = useState<{ mode: 'device' | 'gateway'; entity: Device | Gateway | null } | null>(null)
   const [deleting, setDeleting] = useState<Device | Gateway | null>(null)
@@ -316,17 +320,59 @@ export function DeviceManagement({
   const laboratoryName = (id: string) => laboratories.find((lab) => lab.id === id)?.laboratoryName ?? id
   const gatewayName = (id: string) => gateways.find((gateway) => gateway.id === id)?.gatewayName ?? id
 
-  const run = async (operation: () => Promise<void>) => {
+  const upsertStoreDevice = useDeviceStore((state) => state.upsertDevice)
+  const removeStoreDevice = useDeviceStore((state) => state.removeDevice)
+  const setStoreDevicePolling = useDeviceStore((state) => state.setDevicePolling)
+  const upsertStoreGateway = useDeviceStore((state) => state.upsertGateway)
+  const removeStoreGateway = useDeviceStore((state) => state.removeGateway)
+
+  async function run<T>(operation: () => Promise<T>, apply: (result: T) => void) {
     setBusy(true)
     setError(null)
     try {
-      await operation()
-      await load()
+      const result = await operation()
+      apply(result)
       setEditor(null)
       setDeleting(null)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '操作失败')
       throw cause
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const changePolling = async (device: Device, polling: boolean) => {
+    setError(null)
+    setPollingDeviceIds((ids) => [...ids, device.id])
+    setDevices((items) => items.map((item) => item.id === device.id ? { ...item, polling } : item))
+    setStoreDevicePolling(device.id, polling)
+    try {
+      await dataSource.setPolling(device.id, polling)
+    } catch (cause) {
+      setDevices((items) => items.map((item) => item.id === device.id
+        ? { ...item, polling: device.polling }
+        : item))
+      setStoreDevicePolling(device.id, device.polling)
+      setError(cause instanceof Error ? cause.message : '轮询状态更新失败')
+    } finally {
+      setPollingDeviceIds((ids) => ids.filter((id) => id !== device.id))
+    }
+  }
+
+  const editEntity = async (entity: Device | Gateway) => {
+    setBusy(true)
+    setError(null)
+    try {
+      if ('deviceName' in entity) {
+        const detail = await dataSource.getDevice(entity.id)
+        setEditor({ mode: 'device', entity: detail })
+      } else {
+        const detail = await dataSource.getGateway(entity.id)
+        setEditor({ mode: 'gateway', entity: detail })
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '详情加载失败')
     } finally {
       setBusy(false)
     }
@@ -366,9 +412,18 @@ export function DeviceManagement({
                 <p className="mt-1 mb-0 truncate text-xs text-[#7a8983]">{deviceTypeNames[device.deviceType]} · {laboratoryName(device.belongTo)} · 地址 {device.address}{device.selfId !== undefined ? ` / ${device.selfId}` : ''}</p>
               </div>
               <div className="min-w-40 text-xs text-[#6f8179]"><strong className="block truncate text-[#294039]">{gatewayName(device.gatewayId)}</strong><span className="font-mono">{device.id}</span></div>
-              <label className="flex items-center gap-2 text-xs font-bold text-[#5f7169]">轮询<input type="checkbox" checked={device.polling} disabled={busy} onChange={(event) => void run(() => dataSource.setPolling(device.id, event.target.checked)).catch(() => undefined)} className="size-4 accent-[#16805a]" /></label>
+              <label className="flex items-center gap-2 text-xs font-bold text-[#5f7169]">
+                轮询
+                <input
+                  type="checkbox"
+                  checked={device.polling}
+                  disabled={pollingDeviceIds.includes(device.id)}
+                  onChange={(event) => void changePolling(device, event.target.checked)}
+                  className="size-4 accent-[#16805a]"
+                />
+              </label>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setEditor({ mode: 'device', entity: device })} className="rounded-lg bg-[#edf4f1] px-3 py-2 text-xs font-bold text-[#176c4e] active:scale-[.96]">编辑</button>
+                <button type="button" disabled={busy} onClick={() => void editEntity(device)} className="rounded-lg bg-[#edf4f1] px-3 py-2 text-xs font-bold text-[#176c4e] active:scale-[.96] disabled:opacity-50">编辑</button>
                 <button type="button" onClick={() => { setError(null); setDeleting(device) }} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 active:scale-[.96]">删除</button>
               </div>
             </article>
@@ -381,7 +436,7 @@ export function DeviceManagement({
               </div>
               <div className="min-w-64 text-xs text-[#6f8179]"><p className="m-0 truncate">发送：<span className="font-mono">{gateway.sendTopic}</span></p><p className="mt-1 mb-0 truncate">接收：<span className="font-mono">{gateway.acceptTopic}</span></p></div>
               <div className="flex gap-2">
-                <button type="button" onClick={() => setEditor({ mode: 'gateway', entity: gateway })} className="rounded-lg bg-[#edf4f1] px-3 py-2 text-xs font-bold text-[#176c4e] active:scale-[.96]">编辑</button>
+                <button type="button" disabled={busy} onClick={() => void editEntity(gateway)} className="rounded-lg bg-[#edf4f1] px-3 py-2 text-xs font-bold text-[#176c4e] active:scale-[.96] disabled:opacity-50">编辑</button>
                 <button type="button" onClick={() => { setError(null); setDeleting(gateway) }} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 active:scale-[.96]">删除</button>
               </div>
             </article>
@@ -401,14 +456,30 @@ export function DeviceManagement({
           laboratories={scopedLaboratories}
           busy={busy}
           onCancel={() => setEditor(null)}
-          onSaveDevice={(draft) => run(async () => {
-            if (editor.entity) await dataSource.updateDevice(editor.entity.id, draft)
-            else await dataSource.createDevice(draft)
-          })}
-          onSaveGateway={(draft) => run(async () => {
-            if (editor.entity) await dataSource.updateGateway(editor.entity.id, draft)
-            else await dataSource.createGateway(draft)
-          })}
+          onSaveDevice={(draft) => run(
+            () => editor.entity
+              ? dataSource.updateDevice(editor.entity.id, draft)
+              : dataSource.createDevice(draft),
+            (saved) => {
+              setDevices((items) => [
+                ...items.filter((item) => item.id !== saved.id),
+                saved,
+              ])
+              upsertStoreDevice(saved)
+            },
+          )}
+          onSaveGateway={(draft) => run(
+            () => editor.entity
+              ? dataSource.updateGateway(editor.entity.id, draft)
+              : dataSource.createGateway(draft),
+            (saved) => {
+              setGateways((items) => [
+                ...items.filter((item) => item.id !== saved.id),
+                saved,
+              ])
+              upsertStoreGateway(saved)
+            },
+          )}
         />
       )}
 
@@ -422,7 +493,30 @@ export function DeviceManagement({
             {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{error}</p>}
             <div className="mt-6 flex justify-end gap-3">
               <button type="button" disabled={busy} onClick={() => setDeleting(null)} className="rounded-xl bg-[#edf3f0] px-4 py-2.5 text-sm font-bold">取消</button>
-              <button type="button" disabled={busy} onClick={() => void run(() => 'deviceName' in deleting ? dataSource.deleteDevice(deleting.id) : dataSource.deleteGateway(deleting.id)).catch(() => undefined)} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busy ? '正在删除…' : '确认删除'}</button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void (
+                  'deviceName' in deleting
+                    ? run(
+                        () => dataSource.deleteDevice(deleting.id),
+                        () => {
+                          setDevices((items) => items.filter((item) => item.id !== deleting.id))
+                          removeStoreDevice(deleting.id)
+                        },
+                      )
+                    : run(
+                        () => dataSource.deleteGateway(deleting.id),
+                        () => {
+                          setGateways((items) => items.filter((item) => item.id !== deleting.id))
+                          removeStoreGateway(deleting.id)
+                        },
+                      )
+                ).catch(() => undefined)}
+                className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {busy ? '正在删除…' : '确认删除'}
+              </button>
             </div>
           </div>
         </div>

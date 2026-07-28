@@ -60,4 +60,17 @@ describe('deviceStore', () => {
       Date.parse('2026-07-23T08:00:12.000Z'),
     )).toBe(false)
   })
+
+  it('applies management mutations without reloading the active scope', () => {
+    const device = previewDevices[0]
+    useDeviceStore.getState().setDevicePolling(device.id, !device.polling)
+    expect(useDeviceStore.getState().devicesById[device.id].polling).toBe(!device.polling)
+
+    useDeviceStore.getState().upsertDevice({ ...device, deviceName: '局部更新设备' })
+    expect(useDeviceStore.getState().devicesById[device.id].deviceName).toBe('局部更新设备')
+
+    useDeviceStore.getState().removeDevice(device.id)
+    expect(useDeviceStore.getState().devicesById[device.id]).toBeUndefined()
+    expect(useDeviceStore.getState().telemetryByDeviceId[device.id]).toBeUndefined()
+  })
 })

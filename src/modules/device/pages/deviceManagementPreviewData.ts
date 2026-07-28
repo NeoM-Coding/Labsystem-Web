@@ -39,6 +39,16 @@ export function createDeviceManagementPreviewDataSource(
         ? gateways
         : gateways.filter((gateway) => gateway.usingIn.some((id) => laboratoryIds.includes(id))),
     ),
+    getDevice: async (deviceId) => {
+      const device = devices.find((item) => item.id === deviceId)
+      if (!device) throw new Error('设备不存在')
+      return structuredClone(device)
+    },
+    getGateway: async (gatewayId) => {
+      const gateway = gateways.find((item) => item.id === gatewayId)
+      if (!gateway) throw new Error('网关不存在')
+      return structuredClone(gateway)
+    },
     listLaboratories: async () => structuredClone(laboratories),
     createDevice: async (draft: DeviceDraft) => {
       const created = { ...draft, id: nextId('device') }

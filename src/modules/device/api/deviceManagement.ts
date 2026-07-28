@@ -5,6 +5,11 @@ import type { Laboratory } from '@/modules/laboratory/types'
 import type { ApiResponse, Device, Gateway } from '../types'
 import type { DeviceManagementDataSource } from '../components/DeviceManagement'
 
+interface OperationResult {
+  f: boolean
+  s: string
+}
+
 function unwrap<T>(response: ApiResponse<T>): T {
   if (!response.ok) throw new Error(response.msg || '设备管理请求失败')
   return response.data
@@ -36,6 +41,12 @@ export const deviceManagementDataSource: DeviceManagementDataSource = {
     '/mqtt/gateways',
     { params: laboratoryParams(laboratoryIds) },
   )),
+  getDevice: (deviceId) => request(
+    () => http.get<ApiResponse<Device>>(`/mqtt/devices/${deviceId}`),
+  ),
+  getGateway: (gatewayId) => request(
+    () => http.get<ApiResponse<Gateway>>(`/mqtt/gateways/${gatewayId}`),
+  ),
   listLaboratories: (): Promise<Laboratory[]> => getLaboratories([], []),
   createDevice: (device) => request(() => http.post<ApiResponse<Device>>('/mqtt/devices', device)),
   updateDevice: (deviceId, device) => request(
@@ -44,11 +55,13 @@ export const deviceManagementDataSource: DeviceManagementDataSource = {
   deleteDevice: (deviceId) => request(
     () => http.delete<ApiResponse<null>>(`/mqtt/devices/${deviceId}`),
   ).then(() => undefined),
-  setPolling: (deviceId, enabled) => request(
+  setPolling: (deviceId, enabled) => request<OperationResult>(
     () => enabled
-      ? http.put<ApiResponse<unknown>>(`/mqtt/devices/${deviceId}/polling`)
-      : http.delete<ApiResponse<unknown>>(`/mqtt/devices/${deviceId}/polling`),
-  ).then(() => undefined),
+      ? http.put<ApiResponse<OperationResult>>(`/mqtt/devices/${deviceId}/polling`)
+      : http.delete<ApiResponse<OperationResult>>(`/mqtt/devices/${deviceId}/polling`),
+  ).then((result) => {
+    if (!result.f) throw new Error(result.s || '轮询状态更新失败')
+  }),
   createGateway: (gateway) => request(
     () => http.post<ApiResponse<Gateway>>('/mqtt/gateways', gateway),
   ),

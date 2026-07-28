@@ -54,6 +54,11 @@ interface DeviceState {
   toggleDeviceSelection: (id: string) => void
   selectVisibleDeviceIds: (ids: string[]) => void
   setRealtimeStatus: (status: RealtimeStatus) => void
+  upsertDevice: (device: Device) => void
+  removeDevice: (deviceId: string) => void
+  setDevicePolling: (deviceId: string, polling: boolean) => void
+  upsertGateway: (gateway: Gateway) => void
+  removeGateway: (gatewayId: string) => void
   refreshScope: (laboratoryIds: string[]) => Promise<void>
   applyRealtimeEvent: (event: RealtimeEvent) => void
   tick: (now?: number) => void
@@ -188,6 +193,48 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     return { selectedDeviceIds: nextIds }
   }),
   setRealtimeStatus: (realtimeStatus) => set({ realtimeStatus }),
+  upsertDevice: (device) => set((state) => ({
+    devicesById: {
+      ...state.devicesById,
+      [device.id]: device,
+    },
+  })),
+  removeDevice: (deviceId) => set((state) => {
+    const devicesById = { ...state.devicesById }
+    const telemetryByDeviceId = { ...state.telemetryByDeviceId }
+    delete devicesById[deviceId]
+    delete telemetryByDeviceId[deviceId]
+    return {
+      devicesById,
+      telemetryByDeviceId,
+      selectedEntityId: state.selectedEntityId === deviceId ? null : state.selectedEntityId,
+      selectedDeviceIds: state.selectedDeviceIds.filter((id) => id !== deviceId),
+    }
+  }),
+  setDevicePolling: (deviceId, polling) => set((state) => {
+    const device = state.devicesById[deviceId]
+    if (!device) return state
+    return {
+      devicesById: {
+        ...state.devicesById,
+        [deviceId]: { ...device, polling },
+      },
+    }
+  }),
+  upsertGateway: (gateway) => set((state) => ({
+    gatewaysById: {
+      ...state.gatewaysById,
+      [gateway.id]: gateway,
+    },
+  })),
+  removeGateway: (gatewayId) => set((state) => {
+    const gatewaysById = { ...state.gatewaysById }
+    delete gatewaysById[gatewayId]
+    return {
+      gatewaysById,
+      selectedEntityId: state.selectedEntityId === gatewayId ? null : state.selectedEntityId,
+    }
+  }),
   refreshScope: async (laboratoryIds) => {
     const normalizedIds = [...new Set(laboratoryIds.filter(Boolean))].sort()
     const generation = ++loadGeneration

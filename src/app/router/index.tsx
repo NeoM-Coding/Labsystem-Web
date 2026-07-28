@@ -27,6 +27,27 @@ const DeviceControlPreviewPage = lazy(
 const DeviceManagementPreviewPage = lazy(
   () => import('@/modules/device/pages/DeviceManagementPreviewPage'),
 )
+const LaboratoryManagementPage = lazy(
+  () => import('@/modules/laboratory/pages/LaboratoryManagementPage'),
+)
+const LaboratoryManagementPreviewPage = lazy(
+  () => import('@/modules/laboratory/pages/LaboratoryManagementPreviewPage'),
+)
+const AccountManagementPage = lazy(
+  () => import('@/modules/account/pages/AccountManagementPage'),
+)
+const AccountManagementPreviewPage = lazy(
+  () => import('@/modules/account/pages/AccountManagementPreviewPage'),
+)
+const StrategyManagementPage = lazy(
+  () => import('@/modules/strategy/pages/StrategyManagementPage'),
+)
+const StrategyManagementPreviewPage = lazy(
+  () => import('@/modules/strategy/pages/StrategyManagementPreviewPage'),
+)
+const StrategyRevisionFormPreviewPage = lazy(
+  () => import('@/modules/strategy/pages/StrategyRevisionFormPreviewPage'),
+)
 
 const render = (element: React.ReactNode) => (
   <Suspense fallback={<PageLoader />}>{element}</Suspense>
@@ -50,6 +71,9 @@ export const router = createBrowserRouter([
           { path: 'dashboard', element: render(<DashboardPage />) },
           { path: 'devices', element: render(<DeviceCenterPage />) },
           { path: 'devices/manage', element: render(<DeviceManagementPage />) },
+          { path: 'laboratories/manage', element: render(<LaboratoryManagementPage />) },
+          { path: 'strategies', element: render(<StrategyManagementPage />) },
+          { path: 'accounts', element: render(<AccountManagementPage />) },
           {
             path: 'previews/laboratory-filter',
             element: render(<LaboratoryFilterPreviewPage />),
@@ -69,6 +93,22 @@ export const router = createBrowserRouter([
           {
             path: 'previews/device-management',
             element: render(<DeviceManagementPreviewPage />),
+          },
+          {
+            path: 'previews/laboratory-management',
+            element: render(<LaboratoryManagementPreviewPage />),
+          },
+          {
+            path: 'previews/account-management',
+            element: render(<AccountManagementPreviewPage />),
+          },
+          {
+            path: 'previews/strategy-management',
+            element: render(<StrategyManagementPreviewPage />),
+          },
+          {
+            path: 'previews/strategy-revision-form',
+            element: render(<StrategyRevisionFormPreviewPage />),
           },
         ],
       },

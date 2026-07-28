@@ -5,17 +5,23 @@ import { deleteSession } from '@/modules/auth/api/sessions'
 import { useDeviceStore } from '@/modules/device/store/deviceStore'
 import { DeviceRuntime } from '@/modules/device/components/DeviceRuntime'
 import { queryClient } from '@/shared/lib/queryClient'
+import { useLaboratoryStore } from '@/modules/laboratory/store/laboratoryStore'
+import { useStrategyStore } from '@/modules/strategy/store/strategyStore'
+import { useAccountStore } from '@/modules/account/store/accountStore'
 
 const navigationItems = [
-  { to: '/dashboard', label: '工作台', icon: 'dashboard' },
   { to: '/previews/laboratory-filter', label: '筛选栏预览', icon: 'filter' },
   { to: '/previews/device-switch-bars', label: '设备切换栏预览', icon: 'switch' },
   { to: '/previews/device-data-center', label: '设备中心预览', icon: 'grid' },
   { to: '/previews/device-control', label: '设备控制预览', icon: 'control' },
   { to: '/previews/device-management', label: '设备管理预览', icon: 'manage' },
+  { to: '/previews/laboratory-management', label: '实验室管理预览', icon: 'laboratory' },
+  { to: '/previews/account-management', label: '用户管理预览', icon: 'user' },
+  { to: '/previews/strategy-management', label: '策略管理预览', icon: 'strategy' },
+  { to: '/previews/strategy-revision-form', label: '策略动态表单预览', icon: 'strategy' },
 ] as const
 
-type NavigationIconName = typeof navigationItems[number]['icon'] | 'device'
+type NavigationIconName = typeof navigationItems[number]['icon'] | 'dashboard' | 'device' | 'preview'
 
 function NavigationIcon({ name }: { name: NavigationIconName }) {
   const path = {
@@ -26,6 +32,10 @@ function NavigationIcon({ name }: { name: NavigationIconName }) {
     grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
     control: 'M4 7h10M18 7h2M4 17h2M10 17h10M14 4v6M6 14v6',
     manage: 'M4 5h16v14H4zM8 9h8M8 13h5',
+    laboratory: 'M4 20h16M6 20V8l6-4 6 4v12M9 11h2m2 0h2M9 15h2m2 0h2',
+    user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8c.7-4 3-6 7-6s6.3 2 7 6',
+    strategy: 'M5 6h14M5 12h9M5 18h6M17 10l2 2-4 4',
+    preview: 'M4 5h16v14H4zM8 9h8M8 13h5',
   }[name]
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="nav-icon">
@@ -47,6 +57,9 @@ export function AppLayout() {
   const [deviceMenuOpen, setDeviceMenuOpen] = useState(
     () => window.location.pathname.startsWith('/devices'),
   )
+  const [previewMenuOpen, setPreviewMenuOpen] = useState(
+    () => window.location.pathname.startsWith('/previews/'),
+  )
   const isComponentPreview = location.pathname.startsWith('/previews/')
   const toggleSidebar = () => {
     setSidebarCollapsed((collapsed) => {
@@ -61,6 +74,9 @@ export function AppLayout() {
     try {
       await deleteSession()
       useDeviceStore.getState().reset()
+      useLaboratoryStore.getState().reset()
+      useStrategyStore.getState().reset()
+      useAccountStore.getState().clear()
       queryClient.clear()
       clearSession()
       navigate('/login', { replace: true })
@@ -113,12 +129,41 @@ export function AppLayout() {
               </div>
             )}
           </div>
-          {navigationItems.slice(1).map((item) => (
-            <NavLink key={item.to} to={item.to} title={sidebarCollapsed ? item.label : undefined}>
-              <NavigationIcon name={item.icon} />
-              <span className="sidebar-label">{item.label}</span>
-            </NavLink>
-          ))}
+          <NavLink to="/laboratories/manage" title={sidebarCollapsed ? '实验室管理' : undefined}>
+            <NavigationIcon name="laboratory" />
+            <span className="sidebar-label">实验室管理</span>
+          </NavLink>
+          <NavLink to="/strategies" title={sidebarCollapsed ? '智能策略' : undefined}>
+            <NavigationIcon name="strategy" />
+            <span className="sidebar-label">智能策略</span>
+          </NavLink>
+          <NavLink to="/accounts" title={sidebarCollapsed ? '用户与联系人' : undefined}>
+            <NavigationIcon name="user" />
+            <span className="sidebar-label">用户与联系人</span>
+          </NavLink>
+          <div className="nav-group" data-open={previewMenuOpen}>
+            <button
+              type="button"
+              className={location.pathname.startsWith('/previews/') ? 'active' : ''}
+              aria-expanded={previewMenuOpen}
+              title={sidebarCollapsed ? '组件预览' : undefined}
+              onClick={() => setPreviewMenuOpen((open) => !open)}
+            >
+              <NavigationIcon name="preview" />
+              <span className="sidebar-label">组件预览</span>
+              <svg aria-hidden="true" className="nav-group-chevron sidebar-label" viewBox="0 0 20 20"><path d="m6.5 8 3.5 3.5L13.5 8" /></svg>
+            </button>
+            {previewMenuOpen && (
+              <div className="nav-submenu">
+                {navigationItems.map((item) => (
+                  <NavLink key={item.to} to={item.to} title={sidebarCollapsed ? item.label : undefined}>
+                    <span className="nav-submenu-dot" />
+                    <span className="sidebar-label">{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
       </aside>
       <div className="main-area">
@@ -130,15 +175,21 @@ export function AppLayout() {
                 {logoutError}
               </p>
             )}
-            <div className="user-chip"><span>{user?.name.slice(0, 1) ?? '管'}</span>{user?.name ?? '管理员'}</div>
-            <button
-              type="button"
-              disabled={loggingOut}
-              onClick={() => void logout()}
-              className="rounded-xl px-3 py-2 text-sm font-bold text-[#61726a] transition-[background-color,color,transform,opacity] duration-150 hover:bg-[#edf3f0] hover:text-[#1e3a30] active:scale-[.97] disabled:cursor-wait disabled:opacity-55"
-            >
-              {loggingOut ? '正在退出…' : '退出'}
-            </button>
+            {isComponentPreview ? (
+              <span className="rounded-full bg-[#e5f4ed] px-3 py-1.5 text-xs font-bold text-[#176c4e]">本地预览模式</span>
+            ) : (
+              <>
+                <div className="user-chip"><span>{user?.name.slice(0, 1) ?? '管'}</span>{user?.name ?? '管理员'}</div>
+                <button
+                  type="button"
+                  disabled={loggingOut}
+                  onClick={() => void logout()}
+                  className="rounded-xl px-3 py-2 text-sm font-bold text-[#61726a] transition-[background-color,color,transform,opacity] duration-150 hover:bg-[#edf3f0] hover:text-[#1e3a30] active:scale-[.97] disabled:cursor-wait disabled:opacity-55"
+                >
+                  {loggingOut ? '正在退出…' : '退出'}
+                </button>
+              </>
+            )}
           </div>
         </header>
         <main className="page-content"><Outlet /></main>

@@ -16,12 +16,12 @@ h1, h2, p { margin-top: 0; }
 
 .app-shell { display: grid; grid-template-columns: 248px 1fr; height: 100vh; height: 100dvh; overflow: hidden; transition: grid-template-columns 280ms cubic-bezier(.2,.8,.2,1); }
 .app-shell[data-sidebar-collapsed="true"] { grid-template-columns: 80px 1fr; }
-.sidebar { position: relative; background: #102a22; color: #e8f3ef; padding: 28px 18px; overflow: visible; }
+.sidebar { position: relative; display: flex; min-height: 0; flex-direction: column; background: #102a22; color: #e8f3ef; padding: 28px 18px; overflow: visible; }
 .brand { display: flex; align-items: center; gap: 12px; padding: 0 10px 30px; }
 .brand span { display: grid; flex: 0 0 42px; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #4fd1a1; color: #102a22; font-weight: 800; font-size: 12px; }
 .brand strong { min-width: 154px; font-size: 16px; }
 .sidebar-label { overflow: hidden; white-space: nowrap; opacity: 1; transition: opacity 140ms ease-out; }
-.nav-list { display: grid; gap: 8px; }
+.nav-list { display: grid; min-height: 0; gap: 8px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .nav-list a, .nav-group > button { display: flex; width: 100%; align-items: center; gap: 12px; min-height: 44px; padding: 10px 14px; border: 0; border-radius: 10px; background: transparent; color: #aac0b8; text-align: left; }
 .nav-list a:hover, .nav-list a.active, .nav-group > button:hover, .nav-group > button.active { background: #1d4035; color: white; }
 .nav-group-chevron { width: 16px; height: 16px; margin-left: auto; fill: none; stroke: currentColor; stroke-width: 1.8; transition: transform 180ms ease-out; }

@@ -26,3 +26,16 @@ export async function deleteSession() {
   const { data } = await http.delete<ApiResponse<null>>('/sessions')
   if (!data.ok) throw new Error(data.msg || '退出登录失败')
 }
+
+export async function getCurrentSession() {
+  try {
+    const { data } = await http.get<ApiResponse<UserSession>>('/sessions/current')
+    if (!data.ok) throw new Error(data.msg || '登录状态无效')
+    return data.data
+  } catch (cause) {
+    if (axios.isAxiosError<ApiResponse<unknown>>(cause)) {
+      throw new Error(cause.response?.data?.msg || '登录状态无效')
+    }
+    throw cause
+  }
+}

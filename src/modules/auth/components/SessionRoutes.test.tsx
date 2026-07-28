@@ -55,6 +55,20 @@ describe('session routes', () => {
     expect(screen.getByText('设备中心')).toBeInTheDocument()
   })
 
+  it('keeps deterministic component previews available without a backend session', () => {
+    render(
+      <MemoryRouter initialEntries={['/previews/strategy-management']}>
+        <Routes>
+          <Route element={<RequireSession />}>
+            <Route path="/previews/strategy-management" element={<div>策略预览</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('策略预览')).toBeInTheDocument()
+  })
+
   it('keeps authenticated users out of the login page', () => {
     useAuthStore.getState().setSession({
       id: 'user-1',

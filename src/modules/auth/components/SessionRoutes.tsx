@@ -5,6 +5,10 @@ export function RequireSession() {
   const user = useAuthStore((state) => state.user)
   const location = useLocation()
 
+  if (location.pathname.startsWith('/previews/')) {
+    return <Outlet />
+  }
+
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />
   }

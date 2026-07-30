@@ -6,6 +6,15 @@ import type {
   UserUpdateDraft,
 } from '../types'
 
+export function listUsers(keyword = '') {
+  return apiRequest<ManagedUser[]>(
+    () => http.get('/users', {
+      params: keyword.trim() ? { keyword: keyword.trim() } : undefined,
+    }),
+    '加载系统用户失败',
+  )
+}
+
 export function createUser(draft: UserCreateDraft) {
   return apiRequest<ManagedUser>(
     () => http.post('/users', draft),

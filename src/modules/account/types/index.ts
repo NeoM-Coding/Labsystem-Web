@@ -10,6 +10,14 @@ export interface ManagedUser {
   updateAt?: string
 }
 
+export interface PermissionTreeNode {
+  id: string
+  label: string
+  description?: string
+  relation?: AppRelation
+  children?: PermissionTreeNode[]
+}
+
 export type AppRelation =
   | 'super_admin'
   | 'user_manager'

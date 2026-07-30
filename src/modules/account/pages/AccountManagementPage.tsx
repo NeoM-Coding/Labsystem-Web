@@ -5,7 +5,7 @@ export default function AccountManagementPage() {
     <div>
       <div className="page-heading">
         <div><p className="eyebrow">IDENTITY</p><h1>用户与联系人</h1></div>
-        <p>创建账号、同步授权范围和登记业务联系人</p>
+        <p>查询系统用户、维护账号资料与分层授权范围</p>
       </div>
       <AccountManagement />
     </div>

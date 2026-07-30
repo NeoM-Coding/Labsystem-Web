@@ -8,6 +8,7 @@ import { queryClient } from '@/shared/lib/queryClient'
 import { useLaboratoryStore } from '@/modules/laboratory/store/laboratoryStore'
 import { useStrategyStore } from '@/modules/strategy/store/strategyStore'
 import { useAccountStore } from '@/modules/account/store/accountStore'
+import { useEduStore } from '@/modules/edu/store/eduStore'
 
 const navigationItems = [
   { to: '/previews/laboratory-filter', label: '筛选栏预览', icon: 'filter' },
@@ -19,6 +20,7 @@ const navigationItems = [
   { to: '/previews/account-management', label: '用户管理预览', icon: 'user' },
   { to: '/previews/strategy-management', label: '策略管理预览', icon: 'strategy' },
   { to: '/previews/strategy-revision-form', label: '策略动态表单预览', icon: 'strategy' },
+  { to: '/previews/edu-scheduling', label: '排课组件预览', icon: 'calendar' },
 ] as const
 
 type NavigationIconName = typeof navigationItems[number]['icon'] | 'dashboard' | 'device' | 'preview'
@@ -35,12 +37,23 @@ function NavigationIcon({ name }: { name: NavigationIconName }) {
     laboratory: 'M4 20h16M6 20V8l6-4 6 4v12M9 11h2m2 0h2M9 15h2m2 0h2',
     user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8c.7-4 3-6 7-6s6.3 2 7 6',
     strategy: 'M5 6h14M5 12h9M5 18h6M17 10l2 2-4 4',
+    calendar: 'M5 3v3m14-3v3M4 8h16M5 5h14v15H5zM8 12h3m2 0h3M8 16h3',
     preview: 'M4 5h16v14H4zM8 9h8M8 13h5',
   }[name]
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="nav-icon">
       <path d={path} />
     </svg>
+  )
+}
+
+function NavigationDisclosureIndicator({ open }: { open: boolean }) {
+  return (
+    <span className="nav-group-indicator" data-open={open} aria-hidden="true">
+      <svg viewBox="0 0 20 20">
+        <path d="m6.5 8 3.5 3.5L13.5 8" />
+      </svg>
+    </span>
   )
 }
 
@@ -60,6 +73,9 @@ export function AppLayout() {
   const [previewMenuOpen, setPreviewMenuOpen] = useState(
     () => window.location.pathname.startsWith('/previews/'),
   )
+  const [eduMenuOpen, setEduMenuOpen] = useState(
+    () => window.location.pathname.startsWith('/edu/'),
+  )
   const isComponentPreview = location.pathname.startsWith('/previews/')
   const toggleSidebar = () => {
     setSidebarCollapsed((collapsed) => {
@@ -77,6 +93,7 @@ export function AppLayout() {
       useLaboratoryStore.getState().reset()
       useStrategyStore.getState().reset()
       useAccountStore.getState().clear()
+      useEduStore.getState().reset()
       queryClient.clear()
       clearSession()
       navigate('/login', { replace: true })
@@ -120,7 +137,7 @@ export function AppLayout() {
             >
               <NavigationIcon name="device" />
               <span className="sidebar-label">设备中心</span>
-              <svg aria-hidden="true" className="nav-group-chevron sidebar-label" viewBox="0 0 20 20"><path d="m6.5 8 3.5 3.5L13.5 8" /></svg>
+              <NavigationDisclosureIndicator open={deviceMenuOpen} />
             </button>
             {deviceMenuOpen && (
               <div className="nav-submenu">
@@ -141,6 +158,24 @@ export function AppLayout() {
             <NavigationIcon name="user" />
             <span className="sidebar-label">用户与联系人</span>
           </NavLink>
+          <div className="nav-group" data-open={eduMenuOpen}>
+            <button
+              type="button"
+              className={location.pathname.startsWith('/edu/') ? 'active' : ''}
+              aria-expanded={eduMenuOpen}
+              title={sidebarCollapsed ? '教务管理' : undefined}
+              onClick={() => setEduMenuOpen((open) => !open)}
+            >
+              <NavigationIcon name="calendar" />
+              <span className="sidebar-label">教务管理</span>
+              <NavigationDisclosureIndicator open={eduMenuOpen} />
+            </button>
+            {eduMenuOpen && (
+              <div className="nav-submenu">
+                <NavLink to="/edu/scheduling" title={sidebarCollapsed ? '实验室排课' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">实验室排课</span></NavLink>
+              </div>
+            )}
+          </div>
           <div className="nav-group" data-open={previewMenuOpen}>
             <button
               type="button"
@@ -151,7 +186,7 @@ export function AppLayout() {
             >
               <NavigationIcon name="preview" />
               <span className="sidebar-label">组件预览</span>
-              <svg aria-hidden="true" className="nav-group-chevron sidebar-label" viewBox="0 0 20 20"><path d="m6.5 8 3.5 3.5L13.5 8" /></svg>
+              <NavigationDisclosureIndicator open={previewMenuOpen} />
             </button>
             {previewMenuOpen && (
               <div className="nav-submenu">

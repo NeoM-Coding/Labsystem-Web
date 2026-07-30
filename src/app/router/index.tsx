@@ -48,6 +48,8 @@ const StrategyManagementPreviewPage = lazy(
 const StrategyRevisionFormPreviewPage = lazy(
   () => import('@/modules/strategy/pages/StrategyRevisionFormPreviewPage'),
 )
+const SchedulingPage = lazy(() => import('@/modules/edu/pages/SchedulingPage'))
+const SchedulingPreviewPage = lazy(() => import('@/modules/edu/pages/SchedulingPreviewPage'))
 
 const render = (element: React.ReactNode) => (
   <Suspense fallback={<PageLoader />}>{element}</Suspense>
@@ -74,6 +76,7 @@ export const router = createBrowserRouter([
           { path: 'laboratories/manage', element: render(<LaboratoryManagementPage />) },
           { path: 'strategies', element: render(<StrategyManagementPage />) },
           { path: 'accounts', element: render(<AccountManagementPage />) },
+          { path: 'edu/scheduling', element: render(<SchedulingPage />) },
           {
             path: 'previews/laboratory-filter',
             element: render(<LaboratoryFilterPreviewPage />),
@@ -109,6 +112,10 @@ export const router = createBrowserRouter([
           {
             path: 'previews/strategy-revision-form',
             element: render(<StrategyRevisionFormPreviewPage />),
+          },
+          {
+            path: 'previews/edu-scheduling',
+            element: render(<SchedulingPreviewPage />),
           },
         ],
       },

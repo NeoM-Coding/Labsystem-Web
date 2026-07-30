@@ -33,6 +33,7 @@ interface LaboratoryFilterBarProps {
   dataSource?: LaboratoryFilterDataSource
   queryScope?: string
   embedded?: boolean
+  selectAllOnResolve?: boolean
 }
 
 const defaultDataSource: LaboratoryFilterDataSource = {
@@ -235,6 +236,7 @@ export function LaboratoryFilterBar({
   dataSource = defaultDataSource,
   queryScope = 'application',
   embedded = false,
+  selectAllOnResolve = true,
 }: LaboratoryFilterBarProps = {}) {
   const buildingNames = useLaboratoryFilterStore((state) => state.buildingNames)
   const orgNames = useLaboratoryFilterStore((state) => state.orgNames)
@@ -282,8 +284,9 @@ export function LaboratoryFilterBar({
     setResolution(
       laboratoriesQuery.data ?? [],
       isResolving,
+      selectAllOnResolve,
     )
-  }, [isResolving, laboratoriesQuery.data, setResolution])
+  }, [isResolving, laboratoriesQuery.data, selectAllOnResolve, setResolution])
 
   return (
     <section

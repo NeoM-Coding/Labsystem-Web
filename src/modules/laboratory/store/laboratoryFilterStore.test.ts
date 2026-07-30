@@ -38,6 +38,13 @@ describe('laboratoryFilterStore', () => {
     ])
   })
 
+  it('can resolve laboratories without selecting them for explicit-scope pages', () => {
+    useLaboratoryFilterStore.getState().setResolution(laboratories, false, false)
+
+    expect(useLaboratoryFilterStore.getState().matchedLaboratories).toEqual(laboratories)
+    expect(useLaboratoryFilterStore.getState().laboratoryIds).toEqual([])
+  })
+
   it('replaces the selectable scope when building or organization filters change', () => {
     useLaboratoryFilterStore.getState().setBuildingNames(['创新楼'])
     useLaboratoryFilterStore.getState().setOrgNames(['计算机学院'])

@@ -10,7 +10,11 @@ interface LaboratoryFilterState {
   setBuildingNames: (buildingNames: string[]) => void
   setOrgNames: (orgNames: string[]) => void
   setLaboratoryIds: (laboratoryIds: string[]) => void
-  setResolution: (laboratories: Laboratory[], isResolving: boolean) => void
+  setResolution: (
+    laboratories: Laboratory[],
+    isResolving: boolean,
+    selectAll?: boolean,
+  ) => void
   toggleLaboratory: (laboratoryId: string) => void
   selectAllLaboratories: () => void
   clearLaboratorySelection: () => void
@@ -31,14 +35,14 @@ export const useLaboratoryFilterStore = create<LaboratoryFilterState>((set) => (
       laboratoryIds: [...new Set(laboratoryIds)].filter((id) => availableIds.has(id)),
     }
   }),
-  setResolution: (laboratories, isResolving) => {
+  setResolution: (laboratories, isResolving, selectAll = true) => {
     if (isResolving) {
       set({ isResolving: true })
       return
     }
     set({
       matchedLaboratories: laboratories,
-      laboratoryIds: laboratories.map((laboratory) => laboratory.id),
+      laboratoryIds: selectAll ? laboratories.map((laboratory) => laboratory.id) : [],
       isResolving: false,
     })
   },

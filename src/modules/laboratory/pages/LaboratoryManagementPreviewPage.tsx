@@ -9,8 +9,19 @@ const previewLaboratories: Laboratory[] = [
     buildingName: '创新楼',
     orgName: '计算机学院',
     laboratoryName: '16-201 智能实验室',
-    extra: { capacity: 40 },
-    managers: [{ id: 'contact-1', name: '张老师', phone: '13800000000' }],
+    extra: {
+      capacity: 40,
+      safetyLevel: '重点实验室',
+      facilities: { workstationCount: 36 },
+    },
+    managers: [{
+      id: 'contact-1',
+      name: '张老师',
+      username: 'zhang',
+      phone: '13800000000',
+      email: 'zhang@example.edu.cn',
+      mark: '实验室安全负责人',
+    }],
     createAt: '2026-07-01T08:00:00Z',
     updateAt: '2026-07-24T08:00:00Z',
   },
@@ -19,8 +30,12 @@ const previewLaboratories: Laboratory[] = [
     buildingName: '工程楼',
     orgName: '自动化学院',
     laboratoryName: '设备联合实验室',
-    extra: null,
-    managers: [],
+    extra: {
+      capacity: 24,
+      safetyLevel: '普通实验室',
+      facilities: { workstationCount: 20 },
+    },
+    managers: [{ id: 'contact-2', name: '李教授', email: 'li@example.edu.cn' }],
     createAt: '2026-07-01T08:00:00Z',
     updateAt: '2026-07-24T08:00:00Z',
   },
@@ -41,9 +56,24 @@ export default function LaboratoryManagementPreviewPage() {
           <p className="eyebrow">COMPONENT PREVIEW</p>
           <h1>实验室管理组件</h1>
         </div>
-        <p>当前本地数据：{count} 间实验室</p>
+        <p>当前本地数据：{count} 间实验室 · 已启用 3 个 extra 扩展列</p>
       </div>
-      <LaboratoryManagement preview />
+      <LaboratoryManagement
+        preview
+        extraColumns={[
+          {
+            key: 'capacity',
+            label: '容纳人数',
+            render: (value) => typeof value === 'number' ? `${value} 人` : '—',
+          },
+          { key: 'safetyLevel', label: '安全等级' },
+          {
+            key: 'facilities.workstationCount',
+            label: '工位',
+            render: (value) => typeof value === 'number' ? `${value} 个` : '—',
+          },
+        ]}
+      />
     </div>
   )
 }

@@ -10,7 +10,19 @@ export default function LaboratoryManagementPage() {
         </div>
         <p>维护实验室资料、负责人和扩展配置</p>
       </div>
-      <LaboratoryManagement />
+      <LaboratoryManagement
+        extraColumns={[
+          {
+            key: 'area',
+            label: '面积',
+            render: (value) => `${value} m²`,
+          },
+          {
+            key: 'level',
+            label: '安全等级',
+            render: (value) => `${value} 级`,
+          }
+        ]} />
     </div>
   )
 }

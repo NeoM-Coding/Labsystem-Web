@@ -6,6 +6,19 @@ import type {
   LaboratoryManager,
 } from '../types'
 
+export interface LaboratoryExtraColumn {
+  key: string
+  label: string
+  className?: string
+  emptyText?: string
+  render?: (value: unknown, laboratory: Laboratory) => React.ReactNode
+}
+
+export interface LaboratoryManagementProps {
+  preview?: boolean
+  extraColumns?: LaboratoryExtraColumn[]
+}
+
 const inputClass = 'h-11 min-w-0 rounded-xl border border-[#d9e4df] bg-white px-3 text-sm text-[#20342c] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#48a17f] focus:shadow-[0_0_0_3px_rgb(72_161_127_/_13%)]'
 
 const emptyDraft = (): LaboratoryDraft => ({
@@ -32,6 +45,64 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {label}
       {children}
     </label>
+  )
+}
+
+function readExtraValue(extra: Laboratory['extra'], path: string): unknown {
+  return path.split('.').reduce<unknown>((value, key) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
+    return (value as Record<string, unknown>)[key]
+  }, extra)
+}
+
+function formatExtraValue(value: unknown, emptyText = '—') {
+  if (value === null || value === undefined || value === '') return emptyText
+  if (typeof value === 'boolean') return value ? '是' : '否'
+  if (Array.isArray(value)) return value.map(String).join('、') || emptyText
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+function ManagerDetailsDialog({
+  laboratory,
+  manager,
+  onClose,
+}: {
+  laboratory: Laboratory
+  manager: LaboratoryManager
+  onClose: () => void
+}) {
+  const details = [
+    ['姓名', manager.name],
+    ['用户名', manager.username],
+    ['手机', manager.phone],
+    ['邮箱', manager.email],
+    ['备注', manager.mark],
+    ['用户 ID', manager.id],
+  ].filter((detail): detail is [string, string] => Boolean(detail[1]))
+
+  return (
+    <div className="fixed inset-0 z-[95] grid place-items-center p-5" role="dialog" aria-modal="true" aria-label={`${manager.name}的负责人详情`}>
+      <button type="button" aria-label="关闭负责人详情" onClick={onClose} className="absolute inset-0 bg-[#092018]/30 backdrop-blur-[3px]" />
+      <section className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-[0_24px_80px_rgb(8_39_29_/_25%)] backdrop-blur-2xl">
+        <header className="flex items-start justify-between gap-4 px-6 pt-6 pb-5">
+          <div className="min-w-0">
+            <p className="m-0 text-xs font-extrabold tracking-[.12em] text-[#18825c]">实验室负责人</p>
+            <h2 className="mt-1 mb-0 truncate text-2xl">{manager.name}</h2>
+            <p className="mt-1 mb-0 truncate text-sm text-[#72827b]">{laboratory.laboratoryName}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl bg-[#edf3f0] px-3 py-2 text-sm font-bold active:scale-[.97]">关闭</button>
+        </header>
+        <dl className="m-0 grid gap-px border-t border-[#e5ece8] bg-[#e5ece8]">
+          {details.map(([label, value]) => (
+            <div key={label} className="grid grid-cols-[96px_minmax(0,1fr)] gap-4 bg-white px-6 py-3.5">
+              <dt className="text-sm font-semibold text-[#7b8983]">{label}</dt>
+              <dd className="m-0 break-words text-sm font-semibold text-[#20342c]">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+    </div>
   )
 }
 
@@ -138,11 +209,18 @@ function LaboratoryEditor({
   )
 }
 
-export function LaboratoryManagement({ preview = false }: { preview?: boolean }) {
+export function LaboratoryManagement({
+  preview = false,
+  extraColumns = [],
+}: LaboratoryManagementProps) {
   const store = useLaboratoryStore()
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Laboratory | null | undefined>(undefined)
   const [deleting, setDeleting] = useState<Laboratory | null>(null)
+  const [managerDetails, setManagerDetails] = useState<{
+    laboratory: Laboratory
+    manager: LaboratoryManager
+  } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -220,24 +298,81 @@ export function LaboratoryManagement({ preview = false }: { preview?: boolean })
       {store.status === 'loading' ? (
         <div className="mt-5 grid min-h-56 place-items-center rounded-2xl border border-[#e0e8e4] bg-white text-sm text-[#73827c]">正在加载实验室…</div>
       ) : (
-        <div className="mt-5 grid grid-cols-2 gap-4 max-lg:grid-cols-1">
-          {laboratories.map((laboratory) => (
-            <article key={laboratory.id} className="rounded-2xl border border-[#dde7e2] bg-white p-5 shadow-[0_7px_24px_rgb(17_48_38_/_4%)]">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="m-0 truncate text-lg">{laboratory.laboratoryName}</h2>
-                  <p className="mt-1 mb-0 truncate text-sm text-[#71827a]">{laboratory.buildingName} · {laboratory.orgName || '未设置单位'}</p>
-                </div>
-                <span className="shrink-0 rounded-full bg-[#e7f4ef] px-2.5 py-1 text-xs font-bold text-[#176c4e]">{laboratory.managers.length} 位负责人</span>
-              </div>
-              <p className="mt-5 mb-0 truncate font-mono text-[11px] text-[#95a19c]">{laboratory.id}</p>
-              <div className="mt-4 flex justify-end gap-2 border-t border-[#e8eeeb] pt-4">
-                <button type="button" onClick={() => setEditing(laboratory)} className="rounded-lg bg-[#edf4f1] px-3 py-2 text-xs font-bold text-[#176c4e] active:scale-[.96]">编辑</button>
-                <button type="button" onClick={() => setDeleting(laboratory)} className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 active:scale-[.96]">删除</button>
-              </div>
-            </article>
-          ))}
+        <div className="mt-5 overflow-hidden rounded-2xl border border-[#dce6e1] bg-white shadow-[0_10px_34px_rgb(17_48_38_/_5%)]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[920px] border-collapse text-left">
+              <thead className="bg-[#f2f7f5] text-xs font-bold text-[#66776f]">
+                <tr>
+                  <th scope="col" className="px-5 py-3.5">实验室</th>
+                  <th scope="col" className="px-4 py-3.5">楼栋</th>
+                  <th scope="col" className="px-4 py-3.5">所属单位</th>
+                  <th scope="col" className="px-4 py-3.5">负责人</th>
+                  {extraColumns.map((column) => (
+                    <th key={column.key} scope="col" className={`px-4 py-3.5 ${column.className ?? ''}`}>{column.label}</th>
+                  ))}
+                  <th scope="col" className="px-4 py-3.5">更新时间</th>
+                  <th scope="col" className="sticky right-0 bg-[#f2f7f5] px-5 py-3.5 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {laboratories.map((laboratory) => (
+                  <tr key={laboratory.id} className="group border-t border-[#e5ece8] transition-colors hover:bg-[#f8fbf9]">
+                    <td className="max-w-72 px-5 py-4">
+                      <p className="m-0 truncate text-sm font-bold text-[#183128]" title={laboratory.laboratoryName}>{laboratory.laboratoryName}</p>
+                      <p className="mt-1 mb-0 truncate font-mono text-[10px] text-[#98a49f]" title={laboratory.id}>{laboratory.id}</p>
+                    </td>
+                    <td className="max-w-44 px-4 py-4 text-sm font-semibold text-[#41564d]"><span className="block truncate" title={laboratory.buildingName}>{laboratory.buildingName}</span></td>
+                    <td className="max-w-52 px-4 py-4 text-sm text-[#566960]"><span className="block truncate" title={laboratory.orgName ?? undefined}>{laboratory.orgName || '—'}</span></td>
+                    <td className="max-w-64 px-4 py-4">
+                      {laboratory.managers.length ? (
+                        <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          {laboratory.managers.map((manager, index) => (
+                            <button
+                              key={manager.id ?? `${manager.name}-${index}`}
+                              type="button"
+                              onClick={() => setManagerDetails({ laboratory, manager })}
+                              className="max-w-32 truncate rounded-md text-left text-sm font-bold text-[#147a56] underline decoration-[#9fcdbb] underline-offset-4 hover:text-[#0d6042] active:scale-[.97]"
+                              title={`查看 ${manager.name} 的详情`}
+                            >
+                              {manager.name}
+                            </button>
+                          ))}
+                        </div>
+                      ) : <span className="text-sm text-[#97a39e]">未设置</span>}
+                    </td>
+                    {extraColumns.map((column) => {
+                      const value = readExtraValue(laboratory.extra, column.key)
+                      return (
+                        <td key={column.key} className={`max-w-56 px-4 py-4 text-sm text-[#41564d] ${column.className ?? ''}`}>
+                          <span className="block truncate" title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}>
+                            {column.render ? column.render(value, laboratory) : formatExtraValue(value, column.emptyText)}
+                          </span>
+                        </td>
+                      )
+                    })}
+                    <td className="whitespace-nowrap px-4 py-4 text-xs text-[#77867f]">{new Date(laboratory.updateAt).toLocaleDateString('zh-CN')}</td>
+                    <td className="sticky right-0 whitespace-nowrap bg-white px-5 py-4 text-right transition-colors group-hover:bg-[#f8fbf9]">
+                      <button type="button" onClick={() => setEditing(laboratory)} className="rounded-lg px-3 py-2 text-xs font-bold text-[#176c4e] hover:bg-[#e9f3ef] active:scale-[.96]">编辑</button>
+                      <button type="button" onClick={() => setDeleting(laboratory)} className="rounded-lg px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50 active:scale-[.96]">删除</button>
+                    </td>
+                  </tr>
+                ))}
+                {laboratories.length === 0 && (
+                  <tr>
+                    <td colSpan={6 + extraColumns.length} className="px-5 py-16 text-center text-sm text-[#87958f]">没有符合条件的实验室</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
+      )}
+      {managerDetails && (
+        <ManagerDetailsDialog
+          laboratory={managerDetails.laboratory}
+          manager={managerDetails.manager}
+          onClose={() => setManagerDetails(null)}
+        />
       )}
       {editing !== undefined && <LaboratoryEditor laboratory={editing} busy={busy} onClose={() => setEditing(undefined)} onSave={save} />}
       {deleting && (

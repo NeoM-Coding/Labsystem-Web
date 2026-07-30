@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { useLaboratoryStore } from '../store/laboratoryStore'
 import type { Laboratory } from '../types'
@@ -26,6 +26,7 @@ const laboratory: Laboratory = {
 
 describe('LaboratoryManagement', () => {
   afterEach(() => {
+    cleanup()
     useLaboratoryStore.getState().reset()
   })
 
@@ -51,5 +52,46 @@ describe('LaboratoryManagement', () => {
     expect(screen.getByRole('dialog', { name: '张老师的负责人详情' })).toBeInTheDocument()
     expect(screen.getByText('13800000000')).toBeInTheDocument()
     expect(screen.getByText('zhang@example.edu.cn')).toBeInTheDocument()
+  })
+
+  it('uses the same extra field configuration for the editor and table', async () => {
+    useLaboratoryStore.getState().hydratePreview([])
+
+    render(
+      <LaboratoryManagement
+        preview
+        extraColumns={[
+          {
+            key: 'capacity',
+            label: '容纳人数',
+            render: (value) => typeof value === 'number' ? `${value} 人` : '—',
+            input: { type: 'number', unit: '人', min: 1 },
+          },
+          {
+            key: 'facilities.workstationCount',
+            label: '工位数量',
+            input: { type: 'number', unit: '个', min: 0 },
+          },
+        ]}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '新增实验室' }))
+
+    expect(screen.queryByText(/JSON/)).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('实验室名称'), { target: { value: '软件实验室' } })
+    fireEvent.change(screen.getByLabelText('楼栋名称'), { target: { value: '创新楼' } })
+    fireEvent.change(screen.getByLabelText('容纳人数'), { target: { value: '40' } })
+    fireEvent.change(screen.getByLabelText('工位数量'), { target: { value: '36' } })
+    fireEvent.click(screen.getByRole('button', { name: '保存' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '新增实验室' })).not.toBeInTheDocument())
+    const created = Object.values(useLaboratoryStore.getState().laboratoriesById)[0]
+    expect(created.extra).toEqual({
+      capacity: 40,
+      facilities: { workstationCount: 36 },
+    })
+    expect(screen.getByText('40 人')).toBeInTheDocument()
+    expect(screen.getByText('36')).toBeInTheDocument()
   })
 })

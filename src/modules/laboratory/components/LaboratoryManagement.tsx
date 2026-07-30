@@ -12,6 +12,21 @@ export interface LaboratoryExtraColumn {
   className?: string
   emptyText?: string
   render?: (value: unknown, laboratory: Laboratory) => React.ReactNode
+  input?: {
+    type?: 'text' | 'number' | 'select' | 'boolean' | 'textarea'
+    placeholder?: string
+    description?: string
+    unit?: string
+    required?: boolean
+    min?: number
+    max?: number
+    step?: number
+    span?: 1 | 2
+    options?: Array<{
+      label: string
+      value: string | number
+    }>
+  }
 }
 
 export interface LaboratoryManagementProps {
@@ -53,6 +68,40 @@ function readExtraValue(extra: Laboratory['extra'], path: string): unknown {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
     return (value as Record<string, unknown>)[key]
   }, extra)
+}
+
+function writeExtraValue(
+  extra: Laboratory['extra'],
+  path: string,
+  value: unknown,
+): Laboratory['extra'] {
+  const keys = path.split('.').filter(Boolean)
+  if (!keys.length) return extra
+  const removeValue = value === undefined || value === null || value === ''
+
+  const update = (
+    source: Record<string, unknown>,
+    index: number,
+  ): Record<string, unknown> => {
+    const key = keys[index]
+    const next = { ...source }
+    if (index === keys.length - 1) {
+      if (removeValue) delete next[key]
+      else next[key] = value
+      return next
+    }
+    const currentChild = source[key]
+    const child = currentChild && typeof currentChild === 'object' && !Array.isArray(currentChild)
+      ? currentChild as Record<string, unknown>
+      : {}
+    const nextChild = update(child, index + 1)
+    if (Object.keys(nextChild).length) next[key] = nextChild
+    else delete next[key]
+    return next
+  }
+
+  const root = update(extra ?? {}, 0)
+  return Object.keys(root).length ? root : null
 }
 
 function formatExtraValue(value: unknown, emptyText = '—') {
@@ -108,17 +157,18 @@ function ManagerDetailsDialog({
 
 function LaboratoryEditor({
   laboratory,
+  extraColumns,
   busy,
   onClose,
   onSave,
 }: {
   laboratory: Laboratory | null
+  extraColumns: LaboratoryExtraColumn[]
   busy: boolean
   onClose: () => void
   onSave: (draft: LaboratoryDraft) => Promise<void>
 }) {
   const [draft, setDraft] = useState(() => laboratory ? draftFrom(laboratory) : emptyDraft())
-  const [extraText, setExtraText] = useState(() => draft.extra ? JSON.stringify(draft.extra, null, 2) : '')
   const [error, setError] = useState<string | null>(null)
 
   const updateManager = (index: number, patch: Partial<LaboratoryManager>) => {
@@ -130,6 +180,13 @@ function LaboratoryEditor({
     }))
   }
 
+  const updateExtra = (path: string, value: unknown) => {
+    setDraft((current) => ({
+      ...current,
+      extra: writeExtraValue(current.extra, path, value),
+    }))
+  }
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError(null)
@@ -137,20 +194,25 @@ function LaboratoryEditor({
       setError('实验室名称和楼栋名称不能为空')
       return
     }
+    const missingExtra = extraColumns.find((column) => {
+      if (!column.input?.required) return false
+      const value = readExtraValue(draft.extra, column.key)
+      return value === undefined || value === null || value === ''
+    })
+    if (missingExtra) {
+      setError(`请填写${missingExtra.label}`)
+      return
+    }
     try {
-      const extra = extraText.trim() ? JSON.parse(extraText) as Record<string, unknown> : null
       await onSave({
         ...draft,
         laboratoryName: draft.laboratoryName.trim(),
         buildingName: draft.buildingName.trim(),
         orgName: draft.orgName.trim(),
-        extra,
         manager: draft.manager.filter((manager) => manager.name.trim()),
       })
     } catch (cause) {
-      setError(cause instanceof SyntaxError
-        ? '扩展配置必须是有效的 JSON 对象'
-        : cause instanceof Error ? cause.message : '保存失败')
+      setError(cause instanceof Error ? cause.message : '保存失败')
     }
   }
 
@@ -195,9 +257,129 @@ function LaboratoryEditor({
                 {draft.manager.length === 0 && <p className="m-0 py-3 text-center text-xs text-[#8a9792]">尚未添加负责人</p>}
               </div>
             </section>
-            <Field label="扩展配置（JSON，可选）">
-              <textarea value={extraText} onChange={(event) => setExtraText(event.target.value)} rows={7} spellCheck={false} placeholder={'{\n  "capacity": 40\n}'} className={`${inputClass} h-auto resize-y py-3 font-mono leading-6`} />
-            </Field>
+            {extraColumns.length > 0 && (
+              <section className="rounded-2xl border border-[#dce6e1] bg-white p-4">
+                <div>
+                  <h3 className="m-0 text-sm">扩展资料</h3>
+                  <p className="mt-1 mb-0 text-xs leading-5 text-[#819089]">
+                    这里填写的内容会同步显示在实验室列表对应列中。
+                  </p>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                  {extraColumns.map((column) => {
+                    const config = column.input ?? {}
+                    const type = config.type ?? 'text'
+                    const value = readExtraValue(draft.extra, column.key)
+                    const fieldClassName = config.span === 2 ? 'col-span-2 max-sm:col-span-1' : ''
+
+                    if (type === 'boolean') {
+                      return (
+                        <fieldset key={column.key} className={`m-0 min-w-0 border-0 p-0 ${fieldClassName}`}>
+                          <legend className="mb-1.5 text-xs font-bold text-[#65766f]">
+                            {column.label}{config.required ? ' *' : ''}
+                          </legend>
+                          <div className="grid grid-cols-3 rounded-xl border border-[#d9e4df] bg-[#eef4f1] p-1">
+                            {[
+                              { label: '未设置', value: undefined },
+                              { label: '是', value: true },
+                              { label: '否', value: false },
+                            ].map((option) => {
+                              const selected = value === option.value
+                              return (
+                                <button
+                                  key={option.label}
+                                  type="button"
+                                  aria-pressed={selected}
+                                  onClick={() => updateExtra(column.key, option.value)}
+                                  className={`h-9 rounded-lg text-xs font-bold transition-[background-color,color,box-shadow,transform] duration-150 active:scale-[.97] motion-reduce:transition-none ${
+                                    selected
+                                      ? 'bg-white text-[#176c4e] shadow-[0_2px_8px_rgb(21_70_53_/_10%)]'
+                                      : 'text-[#708078] hover:text-[#30483e]'
+                                  }`}
+                                >
+                                  {option.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {config.description && <p className="mt-1.5 mb-0 text-[11px] leading-4 text-[#8a9892]">{config.description}</p>}
+                        </fieldset>
+                      )
+                    }
+
+                    if (type === 'select') {
+                      return (
+                        <div key={column.key} className={fieldClassName}>
+                          <Field label={`${column.label}${config.required ? ' *' : ''}`}>
+                            <select
+                              aria-label={column.label}
+                              value={value === undefined || value === null ? '' : String(value)}
+                              onChange={(event) => {
+                                const selected = config.options?.find(
+                                  (option) => String(option.value) === event.target.value,
+                                )
+                                updateExtra(column.key, selected?.value)
+                              }}
+                              className={inputClass}
+                            >
+                              <option value="">{config.placeholder ?? '请选择'}</option>
+                              {config.options?.map((option) => (
+                                <option key={String(option.value)} value={String(option.value)}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </Field>
+                          {config.description && <p className="mt-1.5 mb-0 text-[11px] leading-4 text-[#8a9892]">{config.description}</p>}
+                        </div>
+                      )
+                    }
+
+                    const control = type === 'textarea' ? (
+                      <textarea
+                        aria-label={column.label}
+                        value={typeof value === 'string' ? value : ''}
+                        onChange={(event) => updateExtra(column.key, event.target.value)}
+                        rows={3}
+                        placeholder={config.placeholder}
+                        className={`${inputClass} h-auto resize-y py-3 leading-5`}
+                      />
+                    ) : (
+                      <div className="relative">
+                        <input
+                          aria-label={column.label}
+                          type={type}
+                          value={typeof value === 'string' || typeof value === 'number' ? value : ''}
+                          min={config.min}
+                          max={config.max}
+                          step={config.step}
+                          placeholder={config.placeholder}
+                          onChange={(event) => updateExtra(
+                            column.key,
+                            type === 'number'
+                              ? event.target.value === '' ? undefined : Number(event.target.value)
+                              : event.target.value,
+                          )}
+                          className={`${inputClass} w-full ${config.unit ? 'pr-12' : ''}`}
+                        />
+                        {config.unit && (
+                          <span className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-xs font-bold text-[#829089]">
+                            {config.unit}
+                          </span>
+                        )}
+                      </div>
+                    )
+
+                    return (
+                      <div key={column.key} className={fieldClassName}>
+                        <Field label={`${column.label}${config.required ? ' *' : ''}`}>{control}</Field>
+                        {config.description && <p className="mt-1.5 mb-0 text-[11px] leading-4 text-[#8a9892]">{config.description}</p>}
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
           </div>
         </div>
         <footer className="absolute inset-x-0 bottom-0 flex justify-end gap-3 border-t border-[#dfe8e3] bg-white/92 px-7 py-4 backdrop-blur-xl">
@@ -374,7 +556,15 @@ export function LaboratoryManagement({
           onClose={() => setManagerDetails(null)}
         />
       )}
-      {editing !== undefined && <LaboratoryEditor laboratory={editing} busy={busy} onClose={() => setEditing(undefined)} onSave={save} />}
+      {editing !== undefined && (
+        <LaboratoryEditor
+          laboratory={editing}
+          extraColumns={extraColumns}
+          busy={busy}
+          onClose={() => setEditing(undefined)}
+          onSave={save}
+        />
+      )}
       {deleting && (
         <div className="fixed inset-0 z-[90] grid place-items-center bg-[#092018]/30 p-5 backdrop-blur-[3px]" role="alertdialog" aria-modal="true" aria-label="确认删除实验室">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-[0_24px_80px_rgb(8_39_29_/_25%)]">

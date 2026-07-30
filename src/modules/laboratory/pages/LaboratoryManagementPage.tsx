@@ -15,13 +15,28 @@ export default function LaboratoryManagementPage() {
           {
             key: 'area',
             label: '面积',
-            render: (value) => `${value} m²`,
+            render: (value) => typeof value === 'number' ? `${value} m²` : '—',
+            input: {
+              type: 'number',
+              unit: 'm²',
+              min: 0,
+              step: 0.1,
+              placeholder: '例如 120',
+            },
           },
           {
             key: 'level',
             label: '安全等级',
-            render: (value) => `${value} 级`,
-          }
+            render: (value) => typeof value === 'number' ? `${value} 级` : '—',
+            input: {
+              type: 'select',
+              placeholder: '请选择安全等级',
+              options: [1, 2, 3, 4, 5].map((level) => ({
+                label: `${level} 级`,
+                value: level,
+              })),
+            },
+          },
         ]} />
     </div>
   )

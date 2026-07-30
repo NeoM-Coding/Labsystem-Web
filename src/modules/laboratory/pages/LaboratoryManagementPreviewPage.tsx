@@ -65,12 +65,37 @@ export default function LaboratoryManagementPreviewPage() {
             key: 'capacity',
             label: '容纳人数',
             render: (value) => typeof value === 'number' ? `${value} 人` : '—',
+            input: {
+              type: 'number',
+              unit: '人',
+              min: 1,
+              max: 500,
+              placeholder: '例如 40',
+            },
           },
-          { key: 'safetyLevel', label: '安全等级' },
+          {
+            key: 'safetyLevel',
+            label: '安全等级',
+            input: {
+              type: 'select',
+              placeholder: '请选择实验室等级',
+              options: [
+                { label: '普通实验室', value: '普通实验室' },
+                { label: '重点实验室', value: '重点实验室' },
+              ],
+            },
+          },
           {
             key: 'facilities.workstationCount',
             label: '工位',
             render: (value) => typeof value === 'number' ? `${value} 个` : '—',
+            input: {
+              type: 'number',
+              unit: '个',
+              min: 0,
+              max: 500,
+              placeholder: '例如 36',
+            },
           },
         ]}
       />

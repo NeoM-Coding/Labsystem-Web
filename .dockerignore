@@ -1,0 +1,14 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+node_modules
+dist
+coverage
+*.log
+Dockerfile*
+compose*.yml
+compose*.yaml
+README.md
+Jenkinsfile

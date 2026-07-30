@@ -1,0 +1,21 @@
+name: lab-system-web
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ${FRONTEND_IMAGE:-lab-system-web:local}
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${FRONTEND_PORT:-5678}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

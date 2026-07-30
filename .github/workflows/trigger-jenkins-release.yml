@@ -1,0 +1,35 @@
+name: Trigger Jenkins CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_branch:
+        description: Branch to build
+        required: true
+        default: main
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger lab-system-web pipeline
+        env:
+          JENKINS_URL: ${{ secrets.JENKINS_URL }}
+          JENKINS_USER: ${{ secrets.JENKINS_USER }}
+          JENKINS_API_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
+          GIT_BRANCH: ${{ inputs.git_branch || 'main' }}
+          GITHUB_SHA: ${{ github.event_name == 'release' && github.sha || '' }}
+        run: |
+          test -n "$JENKINS_URL"
+          curl --fail-with-body --show-error --silent \
+            --retry 3 --retry-all-errors \
+            --user "$JENKINS_USER:$JENKINS_API_TOKEN" \
+            --request POST \
+            "${JENKINS_URL%/}/job/lab-system-web/buildWithParameters" \
+            --data-urlencode "GIT_BRANCH=$GIT_BRANCH" \
+            --data-urlencode "GITHUB_SHA=$GITHUB_SHA"

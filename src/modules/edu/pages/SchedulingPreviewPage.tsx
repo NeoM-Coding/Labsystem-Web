@@ -76,7 +76,7 @@ const timetables: Timetable[] = [
   course('course-ai-a', '人工智能导论', '王老师', laboratories[1].id, laboratories[1].laboratoryName, 1, '08:00:00', '09:40:00', 1, 8, 'Both'),
   course('course-ai-b', '机器学习', '陈老师', laboratories[1].id, laboratories[1].laboratoryName, 1, '08:00:00', '09:40:00', 9, 16, 'Both'),
   course('course-db', '数据库系统', '赵老师', laboratories[0].id, laboratories[0].laboratoryName, 3, '10:00:00', '11:40:00', 1, 16, 'Both'),
-  course('course-iot', '物联网工程', '周老师', laboratories[1].id, laboratories[1].laboratoryName, 5, '14:10:00', '17:40:00', 3, 14, 'Both'),
+  course('course-iot', '物联网工程', '周老师', laboratories[1].id, laboratories[1].laboratoryName, 5, '15:05:00', '19:25:00', 3, 14, 'Both'),
 ]
 
 const dataSource: LaboratoryFilterDataSource = {
@@ -98,7 +98,7 @@ export default function SchedulingPreviewPage() {
     <div>
       <div className="page-heading">
         <div><p className="eyebrow">COMPONENT PREVIEW</p><h1>排课工作区</h1></div>
-        <p>确定性数据：{timetableCount} 条课程 · 两间实验室按节次展开独立子行</p>
+        <p>确定性数据：{timetableCount} 条课程 · 同时段多实验室横向对比</p>
       </div>
       <SchedulingWorkspace
         preview

@@ -77,4 +77,67 @@ describe('TimetableGrid', () => {
     expect(screen.getByText('请先选择实验室')).toBeInTheDocument()
     expect(screen.queryByText('星期一')).not.toBeInTheDocument()
   })
+
+  it('renders each section as a row and merges a multi-section course into one grid block', () => {
+    const longCourse: Timetable = {
+      ...course,
+      id: 'course-6-9',
+      courseName: '编译原理实验',
+      startSection: 6,
+      endSection: 9,
+      startTime: '15:05:00',
+      endTime: '19:25:00',
+    }
+    render(
+      <TimetableGrid
+        timetables={[longCourse]}
+        laboratories={[laboratory]}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    const block = screen.getByRole('button', {
+      name: /编译原理实验，智能实验室，星期一，6–9 节/,
+    })
+    expect(block.style.gridRow).toBe('6 / span 4')
+    expect(screen.getAllByText('编译原理实验')).toHaveLength(1)
+    expect(screen.getByText('第 6 节')).toBeInTheDocument()
+    expect(screen.getByText('第 9 节')).toBeInTheDocument()
+    expect(screen.queryByText('5–6 节')).not.toBeInTheDocument()
+  })
+
+  it('places laboratories in adjacent columns for direct comparison within each weekday', () => {
+    const secondLaboratory: Laboratory = {
+      ...laboratory,
+      id: 'lab-2',
+      laboratoryName: '网络实验室',
+    }
+    const secondCourse: Timetable = {
+      ...course,
+      id: 'course-2',
+      laboratoryId: secondLaboratory.id,
+      laboratoryName: secondLaboratory.laboratoryName,
+      courseName: '计算机网络',
+    }
+    render(
+      <TimetableGrid
+        timetables={[course, secondCourse]}
+        laboratories={[laboratory, secondLaboratory]}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    const firstBlock = screen.getByRole('button', {
+      name: /操作系统，智能实验室，星期一，1–2 节/,
+    })
+    const secondBlock = screen.getByRole('button', {
+      name: /计算机网络，网络实验室，星期一，1–2 节/,
+    })
+    expect(firstBlock.style.gridColumn).toBe('2')
+    expect(secondBlock.style.gridColumn).toBe('3')
+    expect(screen.getAllByText('智能实验室')).toHaveLength(7)
+    expect(screen.getAllByText('网络实验室')).toHaveLength(7)
+  })
 })

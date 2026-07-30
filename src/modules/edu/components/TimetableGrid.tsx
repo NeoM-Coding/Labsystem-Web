@@ -10,13 +10,9 @@ import {
 import type { PositionedTimetable } from '../timetableLayout'
 import type { Timetable } from '../types'
 
-const ROOM_ROW_HEIGHT = 68
+const SECTION_ROW_HEIGHT = 56
 const LONG_PRESS_MS = 520
 const MOVE_TOLERANCE = 10
-const ROW_GROUPS = [1, 3, 5, 7, 9, 11].map((startSection) => ({
-  startSection,
-  endSection: Math.min(startSection + 1, 11),
-}))
 const COURSE_COLORS = [
   ['#e3f3ed', '#176c4e', '#9ed0bc'],
   ['#e9eef9', '#395d91', '#b4c7e7'],
@@ -35,26 +31,27 @@ function colorFor(value: string) {
 
 function CourseBlock({
   positioned,
-  segmentKey,
+  gridColumn,
   deleteMode,
   onOpen,
   onEnterDeleteMode,
   onDelete,
 }: {
   positioned: PositionedTimetable
-  segmentKey: string
+  gridColumn: number
   deleteMode: boolean
   onOpen: (timetable: Timetable) => void
   onEnterDeleteMode: () => void
   onDelete: (timetable: Timetable) => void
 }) {
-  const { timetable, lane, laneCount } = positioned
+  const { timetable, startSection, endSection, lane, laneCount } = positioned
   const timerRef = useRef<number | null>(null)
   const originRef = useRef({ x: 0, y: 0 })
   const longPressedRef = useRef(false)
   const [pressing, setPressing] = useState(false)
   const [background, foreground, border] = colorFor(`${timetable.courseName}-${timetable.laboratoryId}`)
-  const showDetails = laneCount === 1
+  const sectionSpan = endSection - startSection + 1
+  const showDetails = sectionSpan >= 2 && laneCount === 1
 
   const cancelLongPress = () => {
     if (timerRef.current !== null) window.clearTimeout(timerRef.current)
@@ -99,14 +96,15 @@ function CourseBlock({
 
   return (
     <div
-      key={segmentKey}
       role={deleteMode ? undefined : 'button'}
       tabIndex={deleteMode ? -1 : 0}
       aria-label={`${timetable.courseName}，${timetable.laboratoryName ?? '实验室'}，${WEEKDAYS[timetable.weekday - 1]}，${timetableSectionLabel(timetable)}`}
-      className={`absolute inset-y-[4px] z-10 select-none overflow-hidden rounded-[11px] border px-2 py-1.5 text-left shadow-[0_4px_12px_rgb(20_54_42_/_7%)] transition-[transform,box-shadow,filter] duration-150 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#48a17f]/35 motion-reduce:transition-none ${
+      className={`relative z-10 my-1 self-stretch select-none overflow-hidden rounded-[11px] border px-2 py-1.5 text-left shadow-[0_4px_12px_rgb(20_54_42_/_7%)] transition-[transform,box-shadow,filter] duration-150 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#48a17f]/35 motion-reduce:transition-none ${
         pressing ? 'scale-[.975] brightness-[.98]' : 'hover:-translate-y-px hover:shadow-[0_7px_17px_rgb(20_54_42_/_12%)]'
       } ${deleteMode ? 'pr-7' : ''}`}
       style={{
+        gridColumn,
+        gridRow: `${startSection} / span ${sectionSpan}`,
         left: `calc(${(lane / laneCount) * 100}% + 3px)`,
         width: `calc(${100 / laneCount}% - 6px)`,
         background,
@@ -172,6 +170,17 @@ export function TimetableGrid({
       layoutTimetables(timetables.filter((timetable) => timetable.laboratoryId === laboratory.id))),
     [laboratories, timetables],
   )
+  const laboratoryIndexById = useMemo(
+    () => new Map(laboratories.map((laboratory, index) => [laboratory.id, index])),
+    [laboratories],
+  )
+  const laboratoryCount = laboratories.length
+  const subColumnMinWidth = laboratoryCount > 1 ? 112 : 150
+  const gridTemplateColumns = `104px repeat(${WEEKDAYS.length * laboratoryCount}, minmax(${subColumnMinWidth}px, 1fr))`
+  const timetableMinWidth = Math.max(
+    1180,
+    104 + WEEKDAYS.length * laboratoryCount * subColumnMinWidth,
+  )
 
   useEffect(() => {
     if (!timetables.length) setDeleteMode(false)
@@ -203,68 +212,104 @@ export function TimetableGrid({
         </div>
       ) : (
         <div className="overflow-auto">
-          <div className="min-w-[1320px]">
-            <div className="sticky top-0 z-40 grid h-14 grid-cols-[104px_144px_repeat(7,minmax(150px,1fr))]">
-              <div className="sticky left-0 z-30 grid place-items-center border-r border-b border-[#dfe8e3] bg-[#f4f8f6] text-xs font-bold text-[#6f8078]">课程时段</div>
-              <div className="sticky left-[104px] z-30 grid place-items-center border-r border-b border-[#dfe8e3] bg-[#f4f8f6] text-xs font-bold text-[#6f8078]">实验室</div>
-              {WEEKDAYS.map((weekday) => (
-                <div key={weekday} className="grid place-items-center border-r border-b border-[#dfe8e3] bg-[#f4f8f6]/96 text-sm font-bold text-[#294139] backdrop-blur-xl last:border-r-0">{weekday}</div>
-              ))}
+          <div style={{ minWidth: timetableMinWidth }}>
+            <div
+              className="sticky top-0 z-40 grid grid-rows-[34px_32px]"
+              style={{ gridTemplateColumns }}
+            >
+              <div
+                className="sticky left-0 z-40 grid place-items-center border-r border-b border-[#dfe8e3] bg-[#f4f8f6] text-xs font-bold text-[#6f8078]"
+                style={{ gridColumn: 1, gridRow: '1 / span 2' }}
+              >
+                课程时段
+              </div>
+              {WEEKDAYS.map((weekday, weekdayIndex) => {
+                const weekdayStartColumn = 2 + weekdayIndex * laboratoryCount
+                return (
+                  <div key={weekday} className="contents">
+                    <div
+                      className="grid place-items-center border-r border-b border-[#dfe8e3] bg-[#f4f8f6]/96 text-sm font-bold text-[#294139] backdrop-blur-xl"
+                      style={{
+                        gridColumn: `${weekdayStartColumn} / span ${laboratoryCount}`,
+                        gridRow: 1,
+                      }}
+                    >
+                      {weekday}
+                    </div>
+                    {laboratories.map((laboratory, laboratoryIndex) => (
+                      <div
+                        key={`${weekday}-${laboratory.id}`}
+                        className="grid min-w-0 place-items-center border-r border-b border-[#dfe8e3] bg-[#f8faf9]/96 px-2 text-[10px] font-bold text-[#6e8178] backdrop-blur-xl"
+                        style={{
+                          gridColumn: weekdayStartColumn + laboratoryIndex,
+                          gridRow: 2,
+                        }}
+                        title={laboratory.laboratoryName}
+                      >
+                        <span className="block min-w-0 max-w-full truncate">
+                          {laboratory.laboratoryName}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
             </div>
-            {ROW_GROUPS.map(({ startSection, endSection }) => {
-              const first = SECTION_SLOTS[startSection - 1]
-              const last = SECTION_SLOTS[endSection - 1]
-              return (
-                <div
-                  key={startSection}
-                  className="grid grid-cols-[104px_144px_repeat(7,minmax(150px,1fr))]"
-                >
+            <div
+              className="grid"
+              style={{
+                gridTemplateColumns,
+                gridTemplateRows: `repeat(${SECTION_SLOTS.length}, ${SECTION_ROW_HEIGHT}px)`,
+              }}
+            >
+              {SECTION_SLOTS.map((slot) => (
+                <div key={`section-${slot.section}`} className="contents">
                   <div
                     className="sticky left-0 z-30 grid place-content-center border-r border-b border-[#dfe8e3] bg-[#f8faf9] px-2 text-center"
-                    style={{ gridRow: `span ${laboratories.length}`, height: ROOM_ROW_HEIGHT * laboratories.length }}
+                    style={{ gridColumn: 1, gridRow: slot.section }}
                   >
-                    <strong className="text-xs text-[#3b5047]">{startSection === endSection ? `第 ${startSection} 节` : `${startSection}–${endSection} 节`}</strong>
-                    <span className="mt-1 text-[10px] leading-4 text-[#8a9892]">{first.start}<br />{last.end}</span>
+                    <strong className="text-xs text-[#3b5047]">第 {slot.section} 节</strong>
+                    <span className="mt-0.5 text-[9px] leading-3.5 text-[#8a9892]">
+                      {slot.start}–{slot.end}
+                    </span>
                   </div>
-                  {laboratories.map((laboratory) => (
-                    <div key={`${startSection}-${laboratory.id}`} className="contents">
+                  {WEEKDAYS.map((weekday, weekdayIndex) =>
+                    laboratories.map((laboratory, laboratoryIndex) => (
                       <div
-                        className="sticky left-[104px] z-20 flex items-center border-r border-b border-[#dfe8e3] bg-[#fbfcfc] px-3"
-                        style={{ height: ROOM_ROW_HEIGHT }}
-                      >
-                        <span className="block min-w-0 truncate text-[11px] font-bold text-[#52665d]" title={laboratory.laboratoryName}>{laboratory.laboratoryName}</span>
-                      </div>
-                      {WEEKDAYS.map((weekday, weekdayIndex) => {
-                        const items = positioned.filter((item) =>
-                          item.timetable.laboratoryId === laboratory.id
-                          && item.timetable.weekday === weekdayIndex + 1
-                          && item.startSection <= endSection
-                          && item.endSection >= startSection)
-                        return (
-                          <div
-                            key={`${laboratory.id}-${weekday}`}
-                            className="relative border-r border-b border-[#e5ece8] bg-white last:border-r-0 even:bg-[#fdfefe]"
-                            style={{ height: ROOM_ROW_HEIGHT }}
-                          >
-                            {items.map((item) => (
-                              <CourseBlock
-                                key={`${item.timetable.id}-${startSection}`}
-                                positioned={item}
-                                segmentKey={`${item.timetable.id}-${startSection}`}
-                                deleteMode={deleteMode}
-                                onOpen={onOpen}
-                                onEnterDeleteMode={() => setDeleteMode(true)}
-                                onDelete={onDelete}
-                              />
-                            ))}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  ))}
+                        key={`${slot.section}-${weekday}-${laboratory.id}`}
+                        aria-hidden="true"
+                        className={`border-r border-b border-[#e5ece8] ${
+                          laboratoryIndex % 2 === 0 ? 'bg-white' : 'bg-[#fbfdfc]'
+                        }`}
+                        style={{
+                          gridColumn: 2 + weekdayIndex * laboratoryCount + laboratoryIndex,
+                          gridRow: slot.section,
+                        }}
+                      />
+                    )),
+                  )}
                 </div>
-              )
-            })}
+              ))}
+              {positioned.map((item) => {
+                const laboratoryIndex = laboratoryIndexById.get(item.timetable.laboratoryId)
+                if (laboratoryIndex === undefined) return null
+                return (
+                  <CourseBlock
+                    key={item.timetable.id}
+                    positioned={item}
+                    gridColumn={
+                      2
+                      + (item.timetable.weekday - 1) * laboratoryCount
+                      + laboratoryIndex
+                    }
+                    deleteMode={deleteMode}
+                    onOpen={onOpen}
+                    onEnterDeleteMode={() => setDeleteMode(true)}
+                    onDelete={onDelete}
+                  />
+                )
+              })}
+            </div>
           </div>
         </div>
       )}

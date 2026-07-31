@@ -121,10 +121,10 @@ pipeline {
                   test -r "$LAB_DEPLOY_WEBHOOK_TOKEN_FILE"
                   set +x
                   commit_sha="$(git rev-parse HEAD)"
-                  curl --fail-with-body --show-error --silent \
+                  printf '{"commit":"%s"}' "$commit_sha" | curl --fail-with-body --show-error --silent \
                     --header "Authorization: Bearer $(cat "$LAB_DEPLOY_WEBHOOK_TOKEN_FILE")" \
                     --header "Content-Type: application/json" \
-                    --data "{\"commit\":\"$commit_sha\"}" \
+                    --data-binary @- \
                     "${LAB_DEPLOY_WEBHOOK_URL%/}/v1/deploy/web"
                 '''
             }

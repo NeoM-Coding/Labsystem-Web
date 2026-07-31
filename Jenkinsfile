@@ -14,7 +14,7 @@ pipeline {
         )
         booleanParam(
             name: 'DEPLOY_AFTER_BUILD',
-            defaultValue: false,
+            defaultValue: true,
             description: '成功构建后通过受限宿主机 webhook 重建前端镜像与容器'
         )
     }
@@ -88,6 +88,29 @@ pipeline {
             }
         }
 
+        stage('Publish deploy artifact') {
+            when {
+                expression { params.DEPLOY_AFTER_BUILD }
+            }
+            steps {
+                sh '''
+                  set -eu
+                  commit_sha="$(git rev-parse HEAD)"
+                  artifact_root="/var/lib/lab-system-deploy/artifacts/web"
+                  staging_dir="$artifact_root/.${commit_sha}.tmp"
+                  release_dir="$artifact_root/$commit_sha"
+
+                  rm -rf "$staging_dir"
+                  mkdir -p "$staging_dir/dist"
+                  cp -R dist/. "$staging_dir/dist/"
+                  cp docker/nginx.conf "$staging_dir/nginx.conf"
+                  printf '%s\n' "$commit_sha" > "$staging_dir/commit"
+                  rm -rf "$release_dir"
+                  mv "$staging_dir" "$release_dir"
+                '''
+            }
+        }
+
         stage('Deploy') {
             when {
                 expression { params.DEPLOY_AFTER_BUILD }
@@ -96,10 +119,12 @@ pipeline {
                 sh '''
                   test -n "$LAB_DEPLOY_WEBHOOK_URL"
                   test -r "$LAB_DEPLOY_WEBHOOK_TOKEN_FILE"
+                  set +x
+                  commit_sha="$(git rev-parse HEAD)"
                   curl --fail-with-body --show-error --silent \
                     --header "Authorization: Bearer $(cat "$LAB_DEPLOY_WEBHOOK_TOKEN_FILE")" \
                     --header "Content-Type: application/json" \
-                    --data '{}' \
+                    --data "{\"commit\":\"$commit_sha\"}" \
                     "${LAB_DEPLOY_WEBHOOK_URL%/}/v1/deploy/web"
                 '''
             }

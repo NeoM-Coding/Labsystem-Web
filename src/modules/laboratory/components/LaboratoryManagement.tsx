@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { listUsers } from '@/modules/account/api/accounts'
 import { useLaboratoryStore } from '../store/laboratoryStore'
 import type {
   Laboratory,
@@ -32,9 +33,24 @@ export interface LaboratoryExtraColumn {
 export interface LaboratoryManagementProps {
   preview?: boolean
   extraColumns?: LaboratoryExtraColumn[]
+  listMembers?: (keyword?: string) => Promise<LaboratoryManager[]>
 }
 
 const inputClass = 'h-11 min-w-0 rounded-xl border border-[#d9e4df] bg-white px-3 text-sm text-[#20342c] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#48a17f] focus:shadow-[0_0_0_3px_rgb(72_161_127_/_13%)]'
+const MEMBER_SEARCH_DELAY_MS = 250
+
+const toLaboratoryManager = (member: LaboratoryManager): LaboratoryManager => ({
+  id: member.id,
+  name: member.name,
+  username: member.username,
+  phone: member.phone,
+  email: member.email,
+  mark: member.mark,
+})
+
+const listLaboratoryMembers = async (keyword?: string) => (
+  await listUsers(keyword)
+).map(toLaboratoryManager)
 
 const emptyDraft = (): LaboratoryDraft => ({
   buildingName: '',
@@ -112,6 +128,16 @@ function formatExtraValue(value: unknown, emptyText = '—') {
   return String(value)
 }
 
+function memberIdentity(member: LaboratoryManager) {
+  return member.id ?? `${member.name}|${member.email ?? ''}|${member.phone ?? ''}`
+}
+
+function memberSummary(member: LaboratoryManager) {
+  return member.username
+    ? `@${member.username}`
+    : member.email || member.phone || '未填写联系方式'
+}
+
 function ManagerDetailsDialog({
   laboratory,
   manager,
@@ -158,26 +184,64 @@ function ManagerDetailsDialog({
 function LaboratoryEditor({
   laboratory,
   extraColumns,
+  listMembers,
   busy,
   onClose,
   onSave,
 }: {
   laboratory: Laboratory | null
   extraColumns: LaboratoryExtraColumn[]
+  listMembers: (keyword?: string) => Promise<LaboratoryManager[]>
   busy: boolean
   onClose: () => void
   onSave: (draft: LaboratoryDraft) => Promise<void>
 }) {
   const [draft, setDraft] = useState(() => laboratory ? draftFrom(laboratory) : emptyDraft())
   const [error, setError] = useState<string | null>(null)
+  const [memberPickerOpen, setMemberPickerOpen] = useState(false)
+  const [memberSearch, setMemberSearch] = useState('')
+  const [memberOptions, setMemberOptions] = useState<LaboratoryManager[]>([])
+  const [memberStatus, setMemberStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [memberError, setMemberError] = useState<string | null>(null)
 
-  const updateManager = (index: number, patch: Partial<LaboratoryManager>) => {
-    setDraft((current) => ({
-      ...current,
-      manager: current.manager.map((manager, managerIndex) => managerIndex === index
-        ? { ...manager, ...patch }
-        : manager),
-    }))
+  useEffect(() => {
+    if (!memberPickerOpen) return
+    let active = true
+    setMemberStatus('loading')
+    setMemberError(null)
+    setMemberOptions([])
+    const timer = window.setTimeout(() => {
+      void listMembers(memberSearch.trim() || undefined)
+        .then((members) => {
+          if (!active) return
+          setMemberOptions(members)
+          setMemberStatus('ready')
+        })
+        .catch((cause: unknown) => {
+          if (!active) return
+          setMemberStatus('error')
+          setMemberError(cause instanceof Error ? cause.message : '成员加载失败')
+        })
+    }, memberSearch.trim() ? MEMBER_SEARCH_DELAY_MS : 0)
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [listMembers, memberPickerOpen, memberSearch])
+
+  const toggleManager = (member: LaboratoryManager) => {
+    const identity = memberIdentity(member)
+    setDraft((current) => {
+      const selected = current.manager.some(
+        (candidate) => memberIdentity(candidate) === identity,
+      )
+      return {
+        ...current,
+        manager: selected
+          ? current.manager.filter((candidate) => memberIdentity(candidate) !== identity)
+          : [...current.manager, toLaboratoryManager(member)],
+      }
+    })
   }
 
   const updateExtra = (path: string, value: unknown) => {
@@ -239,23 +303,100 @@ function LaboratoryEditor({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="m-0 text-sm">负责人</h3>
-                  <p className="mt-1 mb-0 text-xs text-[#819089]">负责人作为实验室资料保存；当前后端没有联系人查询接口。</p>
+                  <p className="mt-1 mb-0 text-xs text-[#819089]">从系统用户与联系人中选择，可按姓名、用户名或邮箱搜索。</p>
                 </div>
-                <button type="button" onClick={() => setDraft({ ...draft, manager: [...draft.manager, { name: '' }] })} className="rounded-lg bg-[#e8f3ee] px-3 py-2 text-xs font-bold text-[#176c4e] active:scale-[.97]">添加</button>
+                <button
+                  type="button"
+                  aria-expanded={memberPickerOpen}
+                  onClick={() => setMemberPickerOpen((open) => !open)}
+                  className="rounded-lg bg-[#e8f3ee] px-3 py-2 text-xs font-bold text-[#176c4e] active:scale-[.97]"
+                >
+                  {memberPickerOpen ? '收起' : '选择成员'}
+                </button>
               </div>
               <div className="mt-3 grid gap-3">
-                {draft.manager.map((manager, index) => (
-                  <div key={`${manager.id ?? 'manager'}-${index}`} className="grid grid-cols-[1fr_1fr_auto] gap-2 rounded-xl bg-[#f3f7f5] p-3 max-sm:grid-cols-1">
-                    <input aria-label={`负责人 ${index + 1} 姓名`} placeholder="姓名" value={manager.name} onChange={(event) => updateManager(index, { name: event.target.value })} className={inputClass} />
-                    <input aria-label={`负责人 ${index + 1} 联系方式`} placeholder="手机或邮箱" value={manager.phone ?? manager.email ?? ''} onChange={(event) => {
-                      const value = event.target.value
-                      updateManager(index, value.includes('@') ? { email: value, phone: '' } : { phone: value, email: '' })
-                    }} className={inputClass} />
-                    <button type="button" aria-label={`移除负责人 ${index + 1}`} onClick={() => setDraft({ ...draft, manager: draft.manager.filter((_, managerIndex) => managerIndex !== index) })} className="rounded-xl px-3 text-sm font-bold text-red-700 active:scale-[.97]">移除</button>
+                {draft.manager.map((manager) => (
+                  <div key={memberIdentity(manager)} className="flex min-w-0 items-center gap-3 rounded-xl bg-[#f3f7f5] p-3">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#dff1e9] text-sm font-extrabold text-[#176c4e]">
+                      {manager.name.slice(0, 1)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <strong className="truncate text-sm text-[#294139]">{manager.name}</strong>
+                        <span className="shrink-0 rounded-md bg-white px-1.5 py-0.5 text-[9px] font-bold text-[#71827a]">
+                          {manager.username ? '系统用户' : '联系人'}
+                        </span>
+                      </span>
+                      <span className="mt-0.5 block truncate text-[11px] text-[#819089]">{memberSummary(manager)}</span>
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`移除负责人 ${manager.name}`}
+                      onClick={() => toggleManager(manager)}
+                      className="rounded-lg px-2.5 py-2 text-xs font-bold text-red-700 hover:bg-red-50 active:scale-[.97]"
+                    >
+                      移除
+                    </button>
                   </div>
                 ))}
                 {draft.manager.length === 0 && <p className="m-0 py-3 text-center text-xs text-[#8a9792]">尚未添加负责人</p>}
               </div>
+              {memberPickerOpen && (
+                <div className="mt-3 overflow-hidden rounded-2xl border border-[#dce6e1] bg-[#f8fbf9]">
+                  <div className="border-b border-[#dfe8e3] p-3">
+                    <label className="relative block">
+                      <span className="sr-only">搜索负责人</span>
+                      <svg aria-hidden="true" viewBox="0 0 24 24" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 fill-none stroke-[#809089] stroke-2">
+                        <circle cx="11" cy="11" r="6" />
+                        <path d="m16 16 4 4" strokeLinecap="round" />
+                      </svg>
+                      <input
+                        value={memberSearch}
+                        onChange={(event) => setMemberSearch(event.target.value)}
+                        placeholder="搜索姓名、用户名或邮箱"
+                        className={`${inputClass} w-full pl-9`}
+                      />
+                    </label>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto p-2">
+                    {memberOptions.map((member) => {
+                      const selected = draft.manager.some(
+                        (candidate) => memberIdentity(candidate) === memberIdentity(member),
+                      )
+                      return (
+                        <button
+                          key={memberIdentity(member)}
+                          type="button"
+                          aria-label={`${selected ? '取消选择' : '选择'}成员 ${member.name}`}
+                          aria-pressed={selected}
+                          onClick={() => toggleManager(member)}
+                          className={`flex w-full min-w-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-[background-color,transform] duration-150 active:scale-[.985] motion-reduce:transition-none ${
+                            selected ? 'bg-[#e2f2eb]' : 'hover:bg-white'
+                          }`}
+                        >
+                          <span className={`grid size-8 shrink-0 place-items-center rounded-full text-xs font-extrabold ${
+                            selected ? 'bg-[#147a56] text-white' : 'bg-[#e8efec] text-[#5e7168]'
+                          }`}>
+                            {selected ? '✓' : member.name.slice(0, 1)}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex min-w-0 items-center gap-2">
+                              <strong className="truncate text-xs text-[#294139]">{member.name}</strong>
+                              <span className="shrink-0 text-[9px] font-bold text-[#819089]">
+                                {member.username ? '系统用户' : '联系人'}
+                              </span>
+                            </span>
+                            <span className="mt-0.5 block truncate text-[10px] text-[#87958f]">{memberSummary(member)}</span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                    {memberStatus === 'loading' && <p className="m-0 py-5 text-center text-xs text-[#829089]">正在查询成员…</p>}
+                    {memberStatus === 'ready' && memberOptions.length === 0 && <p className="m-0 py-5 text-center text-xs text-[#829089]">没有匹配的成员</p>}
+                    {memberStatus === 'error' && <p role="alert" className="m-0 px-3 py-4 text-center text-xs font-semibold text-red-700">{memberError}</p>}
+                  </div>
+                </div>
+              )}
             </section>
             {extraColumns.length > 0 && (
               <section className="rounded-2xl border border-[#dce6e1] bg-white p-4">
@@ -394,6 +535,7 @@ function LaboratoryEditor({
 export function LaboratoryManagement({
   preview = false,
   extraColumns = [],
+  listMembers = listLaboratoryMembers,
 }: LaboratoryManagementProps) {
   const store = useLaboratoryStore()
   const [search, setSearch] = useState('')
@@ -560,6 +702,7 @@ export function LaboratoryManagement({
         <LaboratoryEditor
           laboratory={editing}
           extraColumns={extraColumns}
+          listMembers={listMembers}
           busy={busy}
           onClose={() => setEditing(undefined)}
           onSave={save}

@@ -11,7 +11,7 @@ export function listUsers(keyword = '') {
     () => http.get('/users', {
       params: keyword.trim() ? { keyword: keyword.trim() } : undefined,
     }),
-    '加载系统用户失败',
+    '加载用户与联系人失败',
   )
 }
 

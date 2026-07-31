@@ -41,6 +41,37 @@ const previewLaboratories: Laboratory[] = [
   },
 ]
 
+const previewMembers = [
+  {
+    id: 'contact-1',
+    name: '张老师',
+    username: 'zhang',
+    phone: '13800000000',
+    email: 'zhang@example.edu.cn',
+    mark: '实验室安全负责人',
+  },
+  {
+    id: 'contact-2',
+    name: '李教授',
+    email: 'li@example.edu.cn',
+  },
+  {
+    id: 'contact-3',
+    name: '王老师',
+    phone: '13900000000',
+    mark: '设备联系人',
+  },
+]
+
+const listPreviewMembers = async (keyword = '') => {
+  const query = keyword.trim().toLowerCase()
+  return previewMembers.filter((member) => !query || [
+    member.name,
+    member.username ?? '',
+    member.email ?? '',
+  ].some((value) => value.toLowerCase().includes(query)))
+}
+
 export default function LaboratoryManagementPreviewPage() {
   const count = useLaboratoryStore((state) => Object.keys(state.laboratoriesById).length)
   const hydrate = useLaboratoryStore((state) => state.hydratePreview)
@@ -60,6 +91,7 @@ export default function LaboratoryManagementPreviewPage() {
       </div>
       <LaboratoryManagement
         preview
+        listMembers={listPreviewMembers}
         extraColumns={[
           {
             key: 'capacity',

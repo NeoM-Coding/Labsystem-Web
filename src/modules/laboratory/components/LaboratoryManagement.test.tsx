@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useLaboratoryStore } from '../store/laboratoryStore'
 import type { Laboratory } from '../types'
 import { LaboratoryManagement } from './LaboratoryManagement'
@@ -93,5 +93,37 @@ describe('LaboratoryManagement', () => {
     })
     expect(screen.getByText('40 人')).toBeInTheDocument()
     expect(screen.getByText('36')).toBeInTheDocument()
+  })
+
+  it('loads and filters users and contacts when selecting laboratory managers', async () => {
+    useLaboratoryStore.getState().hydratePreview([])
+    const listMembers = vi.fn().mockResolvedValue([
+      {
+        id: 'user-1',
+        name: '张老师',
+        username: 'zhang',
+        email: 'zhang@example.edu.cn',
+      },
+      {
+        id: 'contact-1',
+        name: '李老师',
+        phone: '13800000000',
+      },
+    ])
+
+    render(<LaboratoryManagement preview listMembers={listMembers} />)
+    fireEvent.click(screen.getByRole('button', { name: '新增实验室' }))
+    fireEvent.click(screen.getByRole('button', { name: '选择成员' }))
+
+    await waitFor(() => expect(listMembers).toHaveBeenCalledWith(undefined))
+    expect(await screen.findByRole('button', { name: '选择成员 张老师' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '选择成员 李老师' })).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('搜索负责人'), { target: { value: '李' } })
+    await waitFor(() => expect(listMembers).toHaveBeenCalledWith('李'))
+    fireEvent.click(screen.getByRole('button', { name: '选择成员 李老师' }))
+
+    expect(screen.getAllByText('联系人')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: '移除负责人 李老师' })).toBeInTheDocument()
   })
 })

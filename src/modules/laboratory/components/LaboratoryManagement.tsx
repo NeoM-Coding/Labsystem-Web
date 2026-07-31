@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { listUsers } from '@/modules/account/api/accounts'
 import { useLaboratoryStore } from '../store/laboratoryStore'
 import type {
@@ -76,6 +76,193 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {label}
       {children}
     </label>
+  )
+}
+
+function EditablePicker({
+  label,
+  value,
+  options,
+  placeholder,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: string[]
+  placeholder: string
+  onChange: (value: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const inputId = useId()
+  const listboxId = useId()
+  const normalizedOptions = useMemo(
+    () => [...new Set(options.map((option) => option.trim()).filter(Boolean))]
+      .sort((left, right) => left.localeCompare(right, 'zh-CN')),
+    [options],
+  )
+  const query = value.trim().toLocaleLowerCase('zh-CN')
+  const filteredOptions = useMemo(
+    () => normalizedOptions.filter(
+      (option) => !query || option.toLocaleLowerCase('zh-CN').includes(query),
+    ),
+    [normalizedOptions, query],
+  )
+
+  useEffect(() => {
+    if (!open) return
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+        inputRef.current?.focus()
+      }
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePress)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePress)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
+  useEffect(() => {
+    setActiveIndex((current) => (
+      filteredOptions.length ? Math.min(Math.max(current, 0), filteredOptions.length - 1) : -1
+    ))
+  }, [filteredOptions.length])
+
+  const select = (option: string) => {
+    onChange(option)
+    setOpen(false)
+    setActiveIndex(-1)
+    window.requestAnimationFrame(() => inputRef.current?.focus())
+  }
+
+  const openPicker = () => {
+    setOpen(true)
+    const selectedIndex = filteredOptions.indexOf(value)
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : filteredOptions.length ? 0 : -1)
+  }
+
+  return (
+    <div ref={rootRef} className="relative grid min-w-0 gap-1.5">
+      <label htmlFor={inputId} className="text-xs font-bold text-[#65766f]">{label}</label>
+      <div className={`flex min-w-0 overflow-hidden rounded-xl border bg-white transition-[border-color,box-shadow] duration-150 motion-reduce:transition-none ${
+        open
+          ? 'border-[#48a17f] shadow-[0_0_0_3px_rgb(72_161_127_/_13%)]'
+          : 'border-[#d9e4df] focus-within:border-[#48a17f] focus-within:shadow-[0_0_0_3px_rgb(72_161_127_/_13%)]'
+      }`}>
+        <input
+          ref={inputRef}
+          id={inputId}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          aria-activedescendant={open && activeIndex >= 0 ? `${listboxId}-${activeIndex}` : undefined}
+          value={value}
+          placeholder={placeholder}
+          onFocus={() => {
+            if (normalizedOptions.length) openPicker()
+          }}
+          onChange={(event) => {
+            onChange(event.target.value)
+            setOpen(true)
+            setActiveIndex(0)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault()
+              if (!open) openPicker()
+              else setActiveIndex((current) => Math.min(current + 1, filteredOptions.length - 1))
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault()
+              if (!open) openPicker()
+              else setActiveIndex((current) => Math.max(current - 1, 0))
+            } else if (event.key === 'Enter' && open && activeIndex >= 0) {
+              event.preventDefault()
+              const option = filteredOptions[activeIndex]
+              if (option) select(option)
+            } else if (event.key === 'Escape') {
+              setOpen(false)
+            }
+          }}
+          className="h-11 min-w-0 flex-1 border-0 bg-transparent px-3 text-sm text-[#20342c] outline-none"
+        />
+        <button
+          type="button"
+          aria-label={`选择${label}`}
+          aria-expanded={open}
+          aria-controls={listboxId}
+          onClick={() => {
+            if (open) setOpen(false)
+            else {
+              openPicker()
+              inputRef.current?.focus()
+            }
+          }}
+          className="group grid w-11 shrink-0 place-items-center border-0 border-l border-[#e0e8e4] bg-[#f7faf8] text-[#65766f] transition-[background-color,transform] duration-150 hover:bg-[#edf5f1] active:scale-[.96] motion-reduce:transition-none"
+        >
+          <svg
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+            className={`size-[18px] fill-none stroke-current stroke-[1.8] transition-transform duration-200 motion-reduce:transition-none ${
+              open ? 'rotate-180' : ''
+            }`}
+          >
+            <path d="m6.5 8 3.5 3.5L13.5 8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      </div>
+      {open && (
+        <div
+          id={listboxId}
+          role="listbox"
+          aria-label={`${label}现有选项`}
+          className="absolute top-[66px] z-40 w-full origin-top overflow-hidden rounded-[15px] border border-[#cddcd5]/90 bg-white/94 shadow-[0_18px_46px_rgb(16_52_40_/_16%)] backdrop-blur-2xl backdrop-saturate-150 transition duration-200 ease-out starting:-translate-y-1 starting:scale-[.98] starting:opacity-0 motion-reduce:transform-none motion-reduce:transition-none"
+        >
+          <div className="flex items-center justify-between border-b border-[#e4ebe7] px-3 py-2.5">
+            <span className="text-[11px] font-bold text-[#71827a]">选择现有{label}</span>
+            <span className="text-[10px] text-[#93a099]">或直接输入新名称</span>
+          </div>
+          <div className="max-h-56 overflow-y-auto p-1.5">
+            {filteredOptions.length ? filteredOptions.map((option, index) => {
+              const selected = option === value
+              const active = index === activeIndex
+              return (
+                <button
+                  id={`${listboxId}-${index}`}
+                  key={option}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onPointerMove={() => setActiveIndex(index)}
+                  onClick={() => select(option)}
+                  className={`flex min-h-10 w-full min-w-0 items-center gap-2 rounded-[10px] px-2.5 py-2 text-left text-sm transition-[background-color,transform] duration-100 active:scale-[.985] motion-reduce:transition-none ${
+                    active ? 'bg-[#edf7f3]' : 'hover:bg-[#f5f8f7]'
+                  }`}
+                >
+                  <span className="min-w-0 flex-1 truncate font-semibold text-[#294139]">{option}</span>
+                  {selected && (
+                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#16805a] text-[11px] font-extrabold text-white" aria-hidden="true">✓</span>
+                  )}
+                </button>
+              )
+            }) : (
+              <div className="px-3 py-5 text-center">
+                <p className="m-0 text-xs font-semibold text-[#61736b]">没有匹配的现有选项</p>
+                <p className="mt-1 mb-0 text-[10px] text-[#8b9993]">可直接使用当前输入创建新名称</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -183,6 +370,8 @@ function ManagerDetailsDialog({
 
 function LaboratoryEditor({
   laboratory,
+  buildingOptions,
+  organizationOptions,
   extraColumns,
   listMembers,
   busy,
@@ -190,6 +379,8 @@ function LaboratoryEditor({
   onSave,
 }: {
   laboratory: Laboratory | null
+  buildingOptions: string[]
+  organizationOptions: string[]
   extraColumns: LaboratoryExtraColumn[]
   listMembers: (keyword?: string) => Promise<LaboratoryManager[]>
   busy: boolean
@@ -296,8 +487,20 @@ function LaboratoryEditor({
           <div className="grid gap-5">
             <Field label="实验室名称"><input value={draft.laboratoryName} onChange={(event) => setDraft({ ...draft, laboratoryName: event.target.value })} className={inputClass} /></Field>
             <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-              <Field label="楼栋名称"><input value={draft.buildingName} onChange={(event) => setDraft({ ...draft, buildingName: event.target.value })} className={inputClass} /></Field>
-              <Field label="所属单位"><input value={draft.orgName} onChange={(event) => setDraft({ ...draft, orgName: event.target.value })} className={inputClass} /></Field>
+              <EditablePicker
+                label="楼栋名称"
+                value={draft.buildingName}
+                options={buildingOptions}
+                placeholder="输入或选择楼栋"
+                onChange={(buildingName) => setDraft((current) => ({ ...current, buildingName }))}
+              />
+              <EditablePicker
+                label="所属单位"
+                value={draft.orgName}
+                options={organizationOptions}
+                placeholder="输入或选择单位"
+                onChange={(orgName) => setDraft((current) => ({ ...current, orgName }))}
+              />
             </div>
             <section className="rounded-2xl border border-[#dce6e1] bg-white p-4">
               <div className="flex items-center justify-between gap-3">
@@ -564,6 +767,22 @@ export function LaboratoryManagement({
       .sort((left, right) => left.buildingName.localeCompare(right.buildingName, 'zh-CN')),
     [query, store.laboratoriesById],
   )
+  const buildingOptions = useMemo(
+    () => [...new Set(
+      Object.values(store.laboratoriesById)
+        .map((laboratory) => laboratory.buildingName.trim())
+        .filter(Boolean),
+    )],
+    [store.laboratoriesById],
+  )
+  const organizationOptions = useMemo(
+    () => [...new Set(
+      Object.values(store.laboratoriesById)
+        .map((laboratory) => laboratory.orgName?.trim())
+        .filter((name): name is string => Boolean(name)),
+    )],
+    [store.laboratoriesById],
+  )
 
   const save = async (draft: LaboratoryDraft) => {
     setBusy(true)
@@ -701,6 +920,8 @@ export function LaboratoryManagement({
       {editing !== undefined && (
         <LaboratoryEditor
           laboratory={editing}
+          buildingOptions={buildingOptions}
+          organizationOptions={organizationOptions}
           extraColumns={extraColumns}
           listMembers={listMembers}
           busy={busy}

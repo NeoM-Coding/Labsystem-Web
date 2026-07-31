@@ -95,6 +95,33 @@ describe('LaboratoryManagement', () => {
     expect(screen.getByText('36')).toBeInTheDocument()
   })
 
+  it('supports selecting existing locations and entering new values', async () => {
+    useLaboratoryStore.getState().hydratePreview([laboratory])
+
+    render(<LaboratoryManagement preview />)
+    fireEvent.click(screen.getByRole('button', { name: '新增实验室' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '选择楼栋名称' }))
+    fireEvent.click(screen.getByRole('option', { name: '创新楼' }))
+    expect(screen.getByLabelText('楼栋名称')).toHaveValue('创新楼')
+
+    const organization = screen.getByLabelText('所属单位')
+    fireEvent.change(organization, { target: { value: '未来技术学院' } })
+    expect(organization).toHaveValue('未来技术学院')
+    expect(screen.getByText('没有匹配的现有选项')).toBeInTheDocument()
+
+    fireEvent.change(screen.getByLabelText('实验室名称'), { target: { value: '未来实验室' } })
+    fireEvent.click(screen.getByRole('button', { name: '保存' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '新增实验室' })).not.toBeInTheDocument())
+    const created = Object.values(useLaboratoryStore.getState().laboratoriesById)
+      .find((item) => item.laboratoryName === '未来实验室')
+    expect(created).toMatchObject({
+      buildingName: '创新楼',
+      orgName: '未来技术学院',
+    })
+  })
+
   it('loads and filters users and contacts when selecting laboratory managers', async () => {
     useLaboratoryStore.getState().hydratePreview([])
     const listMembers = vi.fn().mockResolvedValue([

@@ -9,6 +9,8 @@ import { useLaboratoryStore } from '@/modules/laboratory/store/laboratoryStore'
 import { useStrategyStore } from '@/modules/strategy/store/strategyStore'
 import { useAccountStore } from '@/modules/account/store/accountStore'
 import { useEduStore } from '@/modules/edu/store/eduStore'
+import { NotificationCenter } from '@/modules/notification/components/NotificationCenter'
+import { useNotificationStore } from '@/modules/notification/store/notificationStore'
 
 const navigationItems = [
   { to: '/previews/laboratory-filter', label: '筛选栏预览', icon: 'filter' },
@@ -21,9 +23,11 @@ const navigationItems = [
   { to: '/previews/strategy-management', label: '策略管理预览', icon: 'strategy' },
   { to: '/previews/strategy-revision-form', label: '策略动态表单预览', icon: 'strategy' },
   { to: '/previews/edu-scheduling', label: '排课组件预览', icon: 'calendar' },
+  { to: '/previews/notification-center', label: '站内信预览', icon: 'notification' },
+  { to: '/previews/log-center', label: '日志中心预览', icon: 'log' },
 ] as const
 
-type NavigationIconName = typeof navigationItems[number]['icon'] | 'dashboard' | 'device' | 'preview'
+type NavigationIconName = typeof navigationItems[number]['icon'] | 'dashboard' | 'device' | 'preview' | 'log'
 
 function NavigationIcon({ name }: { name: NavigationIconName }) {
   const path = {
@@ -38,6 +42,8 @@ function NavigationIcon({ name }: { name: NavigationIconName }) {
     user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8c.7-4 3-6 7-6s6.3 2 7 6',
     strategy: 'M5 6h14M5 12h9M5 18h6M17 10l2 2-4 4',
     calendar: 'M5 3v3m14-3v3M4 8h16M5 5h14v15H5zM8 12h3m2 0h3M8 16h3',
+    notification: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',
+    log: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4',
     preview: 'M4 5h16v14H4zM8 9h8M8 13h5',
   }[name]
   return (
@@ -76,6 +82,9 @@ export function AppLayout() {
   const [eduMenuOpen, setEduMenuOpen] = useState(
     () => window.location.pathname.startsWith('/edu/'),
   )
+  const [logMenuOpen, setLogMenuOpen] = useState(
+    () => window.location.pathname.startsWith('/logs/'),
+  )
   const isComponentPreview = location.pathname.startsWith('/previews/')
   const toggleSidebar = () => {
     setSidebarCollapsed((collapsed) => {
@@ -94,6 +103,7 @@ export function AppLayout() {
       useStrategyStore.getState().reset()
       useAccountStore.getState().clear()
       useEduStore.getState().reset()
+      useNotificationStore.getState().reset()
       queryClient.clear()
       clearSession()
       navigate('/login', { replace: true })
@@ -158,6 +168,25 @@ export function AppLayout() {
             <NavigationIcon name="user" />
             <span className="sidebar-label">用户与联系人</span>
           </NavLink>
+          <div className="nav-group" data-open={logMenuOpen}>
+            <button
+              type="button"
+              className={location.pathname.startsWith('/logs/') ? 'active' : ''}
+              aria-expanded={logMenuOpen}
+              title={sidebarCollapsed ? '日志中心' : undefined}
+              onClick={() => setLogMenuOpen((open) => !open)}
+            >
+              <NavigationIcon name="log" />
+              <span className="sidebar-label">日志中心</span>
+              <NavigationDisclosureIndicator open={logMenuOpen} />
+            </button>
+            {logMenuOpen && (
+              <div className="nav-submenu">
+                <NavLink to="/logs/audit" title={sidebarCollapsed ? '审计日志' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">审计日志</span></NavLink>
+                <NavLink to="/logs/alerts" title={sidebarCollapsed ? '智能控制告警' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">智能控制告警</span></NavLink>
+              </div>
+            )}
+          </div>
           <div className="nav-group" data-open={eduMenuOpen}>
             <button
               type="button"
@@ -214,6 +243,7 @@ export function AppLayout() {
               <span className="rounded-full bg-[#e5f4ed] px-3 py-1.5 text-xs font-bold text-[#176c4e]">本地预览模式</span>
             ) : (
               <>
+                <NotificationCenter />
                 <div className="user-chip"><span>{user?.name.slice(0, 1) ?? '管'}</span>{user?.name ?? '管理员'}</div>
                 <button
                   type="button"

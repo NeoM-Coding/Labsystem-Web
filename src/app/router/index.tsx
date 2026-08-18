@@ -50,6 +50,12 @@ const StrategyRevisionFormPreviewPage = lazy(
 )
 const SchedulingPage = lazy(() => import('@/modules/edu/pages/SchedulingPage'))
 const SchedulingPreviewPage = lazy(() => import('@/modules/edu/pages/SchedulingPreviewPage'))
+const NotificationCenterPreviewPage = lazy(
+  () => import('@/modules/notification/pages/NotificationCenterPreviewPage'),
+)
+const AuditLogPage = lazy(() => import('@/modules/log/pages/AuditLogPage'))
+const AlertLogPage = lazy(() => import('@/modules/log/pages/AlertLogPage'))
+const LogCenterPreviewPage = lazy(() => import('@/modules/log/pages/LogCenterPreviewPage'))
 
 const render = (element: React.ReactNode) => (
   <Suspense fallback={<PageLoader />}>{element}</Suspense>
@@ -77,6 +83,8 @@ export const router = createBrowserRouter([
           { path: 'strategies', element: render(<StrategyManagementPage />) },
           { path: 'accounts', element: render(<AccountManagementPage />) },
           { path: 'edu/scheduling', element: render(<SchedulingPage />) },
+          { path: 'logs/audit', element: render(<AuditLogPage />) },
+          { path: 'logs/alerts', element: render(<AlertLogPage />) },
           {
             path: 'previews/laboratory-filter',
             element: render(<LaboratoryFilterPreviewPage />),
@@ -116,6 +124,14 @@ export const router = createBrowserRouter([
           {
             path: 'previews/edu-scheduling',
             element: render(<SchedulingPreviewPage />),
+          },
+          {
+            path: 'previews/notification-center',
+            element: render(<NotificationCenterPreviewPage />),
+          },
+          {
+            path: 'previews/log-center',
+            element: render(<LogCenterPreviewPage />),
           },
         ],
       },

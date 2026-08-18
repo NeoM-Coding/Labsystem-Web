@@ -1,6 +1,7 @@
 import { useLaboratoryFilterStore } from '@/modules/laboratory/store/laboratoryFilterStore'
 import { useDeviceStore } from '../store/deviceStore'
 import { routeRealtimeMessage } from './deviceRealtimeRouter'
+import { useNotificationStore } from '@/modules/notification/store/notificationStore'
 
 const MAX_RECONNECT_DELAY = 30_000
 
@@ -45,6 +46,9 @@ export function startDeviceRuntime() {
         },
         onDeviceEvent: (event) => {
           useDeviceStore.getState().applyRealtimeEvent(event)
+        },
+        onRuleExecution: (event) => {
+          useNotificationStore.getState().receive(event)
         },
       })
     })

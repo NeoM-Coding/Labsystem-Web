@@ -60,6 +60,45 @@ describe('device realtime message router', () => {
     expect(onConnected).toHaveBeenCalledOnce()
   })
 
+  it('routes rule action group execution notices separately', () => {
+    const onRuleExecution = vi.fn()
+    const data = {
+      eventId: 'rule-event-1',
+      runtimeId: 'runtime-1',
+      actionGroupId: 'group-1',
+      deviceConditionGroupId: 'temperature-high',
+      timeConditionGroupId: 'always',
+      matchedAt: '2026-08-11T08:00:00Z',
+      completedAt: '2026-08-11T08:00:01Z',
+      traceId: null,
+      actions: [{
+        index: 0,
+        type: 'Control',
+        targetId: 'device-1',
+        userIds: [],
+        reportTypes: [],
+        content: null,
+        status: 'SUCCESS',
+        message: 'completed',
+        completedAt: '2026-08-11T08:00:01Z',
+      }],
+    }
+    const result = routeRealtimeMessage(event({
+      eventId: 'rule-event-1',
+      eventType: 'rule.action-group.executed',
+      source: 'rule-engine',
+      resource: { type: 'runtime', id: 'runtime-1', laboratoryId: null },
+      data,
+    }), {
+      onConnected: vi.fn(),
+      onDeviceEvent: vi.fn(),
+      onRuleExecution,
+    })
+
+    expect(result).toBe('rule.action-group.executed')
+    expect(onRuleExecution).toHaveBeenCalledOnce()
+  })
+
   it('rejects device events with the wrong resource route', () => {
     const onDeviceEvent = vi.fn()
     const result = routeRealtimeMessage(event({

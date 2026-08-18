@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   createEmptyControlAction,
+  createEmptyReportAction,
   createEmptyDeviceCondition,
   createEmptyTimeCondition,
   createStrategyDraft,
@@ -67,5 +68,25 @@ describe('strategyDraftStore', () => {
     expect(validateStrategyDraft(draft).some((issue) => issue.message.includes('开始和结束'))).toBe(false)
     time.endTime = '22:00:00'
     expect(validateStrategyDraft(draft).some((issue) => issue.message.includes('开始和结束'))).toBe(true)
+  })
+
+  it('validates and serializes editable report actions', () => {
+    const draft = createStrategyDraft(null)
+    draft.runtimeId = 'report-rule'
+    const report = createEmptyReportAction()
+    if (report.type !== 'Report') throw new Error('expected report action')
+    report.content = '  温度告警  '
+    report.userIds = ['user-1', ' user-1 ', '', 'contact-1']
+    report.reportTypes = ['SMS']
+    draft.actionGroups[0].actions.push(report)
+
+    expect(validateStrategyDraft(draft)).toEqual([])
+    const serialized = serializeStrategyDraft(draft).actionGroups[0].actions[0]
+    expect(serialized).toMatchObject({
+      type: 'Report',
+      content: '温度告警',
+      userIds: ['user-1', 'contact-1'],
+      reportTypes: ['SMS'],
+    })
   })
 })

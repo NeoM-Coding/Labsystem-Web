@@ -22,6 +22,7 @@ import {
 import type { Device, DeviceType } from '@/modules/device/types'
 import {
   createEmptyControlAction,
+  createEmptyReportAction,
   createEmptyDeviceCondition,
   createEmptyTimeCondition,
   createStrategyDraftStore,
@@ -34,6 +35,8 @@ import {
   type DraftAction,
   type StrategyDraftStore,
 } from '../store/strategyDraftStore'
+import { listUsers } from '@/modules/account/api/accounts'
+import type { ManagedUser } from '@/modules/account/types'
 import type {
   DeviceCondition,
   RuntimeRevision,
@@ -47,6 +50,7 @@ export interface StrategyRevisionFormProps {
   devices: Device[]
   saving?: boolean
   defaultZoneId?: string
+  listMembers?: (keyword?: string) => Promise<ManagedUser[]>
   onChange?: (revision: RuntimeRevision, valid: boolean) => void
   onSubmit: (revision: RuntimeRevision) => Promise<void> | void
   onCancel: () => void
@@ -650,19 +654,7 @@ function ControlActionCard({
   onDuplicate: () => void
   onRemove: () => void
 }) {
-  if (action.type === 'Report') {
-    return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <strong className="text-sm text-amber-900">通知动作（只读保留）</strong>
-            <p className="mt-1 mb-0 text-xs leading-5 text-amber-800">通知通道尚未接入。该既有配置会原样保存，但当前不会实际发送。</p>
-          </div>
-          <button type="button" onClick={onRemove} className={`${smallButton} bg-white text-red-700`}>移除</button>
-        </div>
-      </div>
-    )
-  }
+  if (action.type === 'Report') return null
 
   const selectedDevice = devices.find((device) => device.id === action.control.deviceId)
   const selectedOutsideScope = action.control.deviceId && !selectedDevice
@@ -732,7 +724,151 @@ function ControlActionCard({
   )
 }
 
-function ActionGroups({ devices }: { devices: Device[] }) {
+function ReportActionCard({
+  action,
+  listMembers,
+  onUpdate,
+  onDuplicate,
+  onRemove,
+}: {
+  action: Extract<DraftAction, { type: 'Report' }>
+  listMembers: (keyword?: string) => Promise<ManagedUser[]>
+  onUpdate: (recipe: (action: DraftAction) => void) => void
+  onDuplicate: () => void
+  onRemove: () => void
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [members, setMembers] = useState<ManagedUser[]>([])
+  const [knownMembers, setKnownMembers] = useState<Record<string, ManagedUser>>({})
+  const [memberStatus, setMemberStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+
+  useEffect(() => {
+    if (!pickerOpen) return
+    let active = true
+    setMemberStatus('loading')
+    const timer = window.setTimeout(() => {
+      void listMembers(search.trim() || undefined).then((items) => {
+        if (!active) return
+        setMembers(items)
+        setKnownMembers((current) => ({
+          ...current,
+          ...Object.fromEntries(items.map((member) => [member.id, member])),
+        }))
+        setMemberStatus('ready')
+      }).catch(() => {
+        if (active) setMemberStatus('error')
+      })
+    }, search.trim() ? 250 : 0)
+    return () => {
+      active = false
+      window.clearTimeout(timer)
+    }
+  }, [listMembers, pickerOpen, search])
+
+  const toggleUser = (userId: string) => onUpdate((item) => {
+    if (item.type !== 'Report') return
+    item.userIds = item.userIds.includes(userId)
+      ? item.userIds.filter((id) => id !== userId)
+      : [...item.userIds, userId]
+  })
+  const toggleType = (type: 'SMS' | 'SMTP') => onUpdate((item) => {
+    if (item.type !== 'Report') return
+    item.reportTypes = item.reportTypes.includes(type)
+      ? item.reportTypes.filter((candidate) => candidate !== type)
+      : [...item.reportTypes, type]
+  })
+  const selectedMembers = action.userIds.map((id) => knownMembers[id] ?? {
+    id,
+    name: id,
+  })
+  const onlyContacts = selectedMembers.length > 0
+    && selectedMembers.every((member) => member.username === undefined && knownMembers[member.id] !== undefined)
+
+  return (
+    <div className="rounded-2xl border border-[#cfe2d9] bg-[#fbfdfc] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <strong className="text-sm text-[#244238]">通知动作</strong>
+          <p className="mt-1 mb-0 text-xs leading-5 text-[#73837b]">站内信会真实发送；短信和邮件仅保存配置，当前尚未实现。</p>
+        </div>
+        <div className="flex gap-1.5">
+          <button type="button" onClick={onDuplicate} className={`${smallButton} bg-[#edf3f0] text-[#607168]`}>复制</button>
+          <button type="button" onClick={onRemove} className={`${smallButton} bg-red-50 text-red-700`}>删除</button>
+        </div>
+      </div>
+
+      <label className="mt-4 grid gap-1 text-[11px] font-bold text-[#75847d]">通知内容
+        <textarea
+          value={action.content}
+          rows={3}
+          placeholder="例如：实验室温度持续超过阈值，已执行降温动作。"
+          onChange={(event) => onUpdate((item) => {
+            if (item.type === 'Report') item.content = event.target.value
+          })}
+          className={`${fieldClass} h-auto min-h-24 resize-y py-3 leading-6`}
+        />
+      </label>
+
+      <div className="mt-3 rounded-xl border border-[#dce7e2] bg-white p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <strong className="text-xs text-[#355047]">接收成员</strong>
+            <p className="mt-0.5 mb-0 text-[10px] text-[#829089]">系统用户可接收站内信；联系人为未来短信和邮件保留。</p>
+          </div>
+          <button type="button" aria-expanded={pickerOpen} onClick={() => setPickerOpen((open) => !open)} className={`${smallButton} bg-[#e5f2ec] text-[#176d4f]`}>
+            {pickerOpen ? '收起选择' : '选择成员'}
+          </button>
+        </div>
+        {selectedMembers.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {selectedMembers.map((member) => (
+              <button key={member.id} type="button" onClick={() => toggleUser(member.id)} className="max-w-full rounded-full bg-[#edf5f1] px-3 py-1.5 text-left text-xs font-bold text-[#27614d]">
+                <span className="inline-block max-w-44 truncate align-bottom">{member.name}</span>
+                <span className="ml-1 text-[10px] font-medium text-[#7b8c84]">{member.username ? '系统用户' : knownMembers[member.id] ? '联系人' : '未解析 ID'} ×</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 mb-0 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">未选择接收人时仍会保存告警日志，但不会发送站内信。</p>
+        )}
+        {onlyContacts && <p className="mt-2 mb-0 text-xs font-semibold text-amber-700">当前只选择了联系人，他们无法登录接收站内信；SMS/SMTP 尚未接入。</p>}
+        {pickerOpen && (
+          <div className="mt-3 rounded-xl bg-[#f4f8f6] p-2.5">
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索姓名、用户名或邮箱" className={fieldClass} />
+            <div className="mt-2 grid max-h-52 gap-1 overflow-y-auto">
+              {members.map((member) => {
+                const selected = action.userIds.includes(member.id)
+                return (
+                  <button key={member.id} type="button" aria-label={`${selected ? '取消选择' : '选择'}成员 ${member.name}`} onClick={() => toggleUser(member.id)} className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left ${selected ? 'bg-[#dff2e9]' : 'bg-white hover:bg-[#edf5f1]'}`}>
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#dcefe7] text-xs font-extrabold text-[#176d4f]">{selected ? '✓' : member.name.slice(0, 1)}</span>
+                    <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-[#294139]">{member.name}</strong><small className="block truncate text-[10px] text-[#87958f]">{member.username ? `系统用户 · @${member.username}` : `联系人 · ${member.email || member.phone || '无联系方式'}`}</small></span>
+                  </button>
+                )
+              })}
+              {memberStatus === 'loading' && <p className="m-0 py-4 text-center text-xs text-[#829089]">正在查询成员…</p>}
+              {memberStatus === 'ready' && members.length === 0 && <p className="m-0 py-4 text-center text-xs text-[#829089]">没有匹配的成员</p>}
+              {memberStatus === 'error' && <p role="alert" className="m-0 py-4 text-center text-xs font-semibold text-red-700">成员加载失败，请重试</p>}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <fieldset className="mt-3 rounded-xl border border-dashed border-[#d7e2dd] p-3">
+        <legend className="px-1 text-[11px] font-bold text-[#75847d]">预留外部通道</legend>
+        <div className="flex flex-wrap gap-2">
+          {(['SMS', 'SMTP'] as const).map((type) => (
+            <button key={type} type="button" aria-pressed={action.reportTypes.includes(type)} onClick={() => toggleType(type)} className={`${smallButton} ${action.reportTypes.includes(type) ? 'bg-amber-100 text-amber-900' : 'bg-[#edf3f0] text-[#687970]'}`}>
+              {type === 'SMS' ? '短信' : '邮件'} · 尚未实现
+            </button>
+          ))}
+        </div>
+      </fieldset>
+    </div>
+  )
+}
+
+function ActionGroups({ devices, listMembers }: { devices: Device[]; listMembers: (keyword?: string) => Promise<ManagedUser[]> }) {
   const draft = useDraft((state) => state.draft)
   const update = useDraft((state) => state.update)
   return (
@@ -740,7 +876,7 @@ function ActionGroups({ devices }: { devices: Device[] }) {
       id="strategy-action-groups"
       eyebrow="ACTIONS"
       title="执行动作"
-      description="设备条件组与时间条件组同时满足时，按顺序发送组内控制指令。通知能力暂未接入。"
+      description="设备条件组与时间条件组同时满足时执行组内动作；通知动作会驱动站内信，短信和邮件仍为预留通道。"
       action={(
         <button type="button" onClick={() => update((next) => {
           next.actionGroups.push({
@@ -775,11 +911,22 @@ function ActionGroups({ devices }: { devices: Device[] }) {
               当“{group.deviceConditionGroupId || '未选择'}”并且“{group.timeConditionGroupId || '未选择'}”满足时执行
             </p>
             {group.actions.length === 0 ? (
-              <EmptyGroupHint>尚未设置动作。至少添加一个设备控制动作。</EmptyGroupHint>
+              <EmptyGroupHint>尚未设置动作。可以添加设备控制或通知动作。</EmptyGroupHint>
             ) : (
               <div className="grid gap-2.5">
                 {group.actions.map((action, actionIndex) => (
-                  <ControlActionCard
+                  action.type === 'Report' ? <ReportActionCard
+                    key={action._key}
+                    action={action}
+                    listMembers={listMembers}
+                    onUpdate={(recipe) => update((next) => recipe(next.actionGroups[groupIndex].actions[actionIndex]))}
+                    onDuplicate={() => update((next) => {
+                      const copy = structuredClone(next.actionGroups[groupIndex].actions[actionIndex])
+                      copy._key = `${copy._key}-copy-${Date.now()}`
+                      next.actionGroups[groupIndex].actions.splice(actionIndex + 1, 0, copy)
+                    })}
+                    onRemove={() => update((next) => { next.actionGroups[groupIndex].actions.splice(actionIndex, 1) })}
+                  /> : <ControlActionCard
                     key={action._key}
                     action={action}
                     devices={devices}
@@ -794,18 +941,19 @@ function ActionGroups({ devices }: { devices: Device[] }) {
                 ))}
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => update((next) => {
-                const type = devices[0]?.deviceType ?? 'AirCondition'
-                const action = createEmptyControlAction(type)
-                if (action.type === 'Control' && devices[0]) action.control.deviceId = devices[0].id
-                next.actionGroups[groupIndex].actions.push(action)
-              })}
-              className={`${smallButton} mt-3 bg-[#e2f2eb] text-[#146c4d]`}
-            >
-              ＋ 添加控制动作
-            </button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => update((next) => {
+                  const type = devices[0]?.deviceType ?? 'AirCondition'
+                  const action = createEmptyControlAction(type)
+                  if (action.type === 'Control' && devices[0]) action.control.deviceId = devices[0].id
+                  next.actionGroups[groupIndex].actions.push(action)
+                })}
+                className={`${smallButton} bg-[#e2f2eb] text-[#146c4d]`}
+              >＋ 添加控制动作</button>
+              <button type="button" onClick={() => update((next) => { next.actionGroups[groupIndex].actions.push(createEmptyReportAction()) })} className={`${smallButton} bg-[#edf1ff] text-[#405c9b]`}>＋ 添加通知动作</button>
+            </div>
           </article>
         ))}
       </div>
@@ -852,6 +1000,11 @@ function SummarySection() {
   const draft = useDraft((state) => state.draft)
   const issues = validateStrategyDraft(draft)
   const controlActions = draft.actionGroups.flatMap((group) => group.actions).filter((action) => action.type === 'Control')
+  const reportActions = draft.actionGroups.flatMap((group) => group.actions).filter((action) => action.type === 'Report')
+  const persistOnlyGroups = draft.actionGroups.filter((group) => {
+    const reports = group.actions.filter((action) => action.type === 'Report')
+    return reports.length === 0 || reports.every((action) => action.userIds.length === 0)
+  })
   return (
     <Section
       id="strategy-summary"
@@ -859,16 +1012,20 @@ function SummarySection() {
       title="检查发布"
       description="这里展示最终会提交给规则引擎的结构摘要；不会要求用户编辑 JSON。"
     >
-      <div className="grid grid-cols-4 gap-2.5 max-sm:grid-cols-2">
+      <div className="grid grid-cols-3 gap-2.5 max-sm:grid-cols-2">
         {[
           ['设备条件组', draft.deviceConditionGroups.length],
           ['时间条件组', draft.timeConditionGroups.length],
           ['动作组', draft.actionGroups.length],
           ['控制动作', controlActions.length],
+          ['通知动作', reportActions.length],
+          ['仅记录告警', persistOnlyGroups.length],
         ].map(([label, value]) => (
           <div key={label} className="rounded-xl bg-[#eef5f2] p-3"><small className="block text-[10px] font-bold text-[#7a8982]">{label}</small><strong className="mt-1 block text-xl text-[#1f3b30]">{value}</strong></div>
         ))}
       </div>
+      {persistOnlyGroups.length > 0 && <p className="mt-3 mb-0 rounded-xl bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">有 {persistOnlyGroups.length} 个动作组未指定有效接收人，命中后只保存告警日志，不发送站内信。</p>}
+      {reportActions.some((action) => action.type === 'Report' && action.reportTypes.length > 0) && <p className="mt-2 mb-0 text-xs text-[#7a8982]">已保留短信或邮件配置；这些外部通道当前不会实际发送。</p>}
       {issues.length === 0 ? (
         <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">配置完整，可以保存。</div>
       ) : (
@@ -888,6 +1045,7 @@ function StrategyFormContent({
   devices,
   saving,
   defaultZoneId,
+  listMembers,
   onChange,
   onSubmit,
   onCancel,
@@ -946,7 +1104,7 @@ function StrategyFormContent({
             <BasicSection mode={mode} />
             <DeviceGroups devices={devices} />
             <TimeGroups defaultZoneId={defaultZoneId} />
-            <ActionGroups devices={devices} />
+            <ActionGroups devices={devices} listMembers={listMembers ?? listUsers} />
             <SummarySection />
             {submitError && <p role="alert" className="m-0 rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{submitError}</p>}
           </div>
@@ -993,6 +1151,7 @@ export function StrategyRevisionForm({
   devices,
   saving = false,
   defaultZoneId = 'Asia/Shanghai',
+  listMembers = listUsers,
   onChange,
   onSubmit,
   onCancel,
@@ -1007,6 +1166,7 @@ export function StrategyRevisionForm({
           devices={devices}
           saving={saving}
           defaultZoneId={defaultZoneId}
+          listMembers={listMembers}
           onChange={onChange}
           onSubmit={onSubmit}
           onCancel={onCancel}

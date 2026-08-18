@@ -49,6 +49,12 @@ const initialRevision: RuntimeRevision = {
       userIds: [],
       reportTypes: [],
       content: null,
+    }, {
+      type: 'Report',
+      control: null,
+      userIds: ['preview-user-1'],
+      reportTypes: ['SMS'],
+      content: '室温超过阈值，已执行空调控制。',
     }],
   }],
 }
@@ -81,6 +87,16 @@ export default function StrategyRevisionFormPreviewPage() {
           initialValue={output}
           mode="edit"
           devices={previewDevices}
+          listMembers={async (keyword) => {
+            const members = [
+              { id: 'preview-user-1', name: '张老师', username: 'zhang', email: 'zhang@example.com' },
+              { id: 'preview-contact-1', name: '李老师', email: 'li@example.com' },
+            ]
+            const query = keyword?.trim().toLowerCase()
+            return query
+              ? members.filter((member) => [member.name, member.username ?? '', member.email].some((value) => value.toLowerCase().includes(query)))
+              : members
+          }}
           onChange={(revision, nextValid) => {
             setOutput(revision)
             setValid(nextValid)

@@ -98,6 +98,17 @@ export function createEmptyControlAction(deviceType: DeviceType = 'AirCondition'
   }
 }
 
+export function createEmptyReportAction(): DraftAction {
+  return {
+    _key: id('action'),
+    type: 'Report',
+    control: null,
+    userIds: [],
+    reportTypes: [],
+    content: '',
+  }
+}
+
 export function createStrategyDraft(revision: RuntimeRevision | null): StrategyDraft {
   if (revision) return withKeys(revision)
   const deviceGroup: DeviceConditionGroup = { groupId: '始终满足', conditions: [] }
@@ -278,10 +289,13 @@ export function validateStrategyDraft(draft: StrategyDraft): StrategyValidationI
     const path = `action-group-${groupIndex}`
     if (!deviceGroupIds.has(group.deviceConditionGroupId)) issues.push({ path, message: '请选择有效的设备条件组' })
     if (!timeGroupIds.has(group.timeConditionGroupId)) issues.push({ path, message: '请选择有效的时间条件组' })
-    if (group.actions.length === 0) issues.push({ path, message: '请至少添加一个控制动作' })
+    if (group.actions.length === 0) issues.push({ path, message: '请至少添加一个动作' })
     group.actions.forEach((action, actionIndex) => {
-      if (action.type === 'Report') return
       const actionPath = `${path}-action-${actionIndex}`
+      if (action.type === 'Report') {
+        if (!action.content.trim()) issues.push({ path: actionPath, message: '请填写通知内容' })
+        return
+      }
       if (!action.control.deviceId.trim()) issues.push({ path: actionPath, message: '请选择控制设备' })
       const command = commandsFor(action.control.type)
         .find((item) => item.commandLine === action.control.commandLine)
@@ -318,6 +332,12 @@ export function serializeStrategyDraft(draft: StrategyDraft): RuntimeRevision {
       actions: group.actions.map((action) => {
         const serialized = clone(action) as Partial<DraftAction>
         delete serialized._key
+        if (serialized.type === 'Report') {
+          serialized.content = serialized.content?.trim() ?? ''
+          serialized.userIds = [...new Set(
+            (serialized.userIds ?? []).map((id) => id.trim()).filter(Boolean),
+          )]
+        }
         return serialized as StrategyAction
       }),
     })),

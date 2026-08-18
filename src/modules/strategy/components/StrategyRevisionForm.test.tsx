@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Device } from '@/modules/device/types'
 import type { RuntimeRevision } from '../types'
 import { StrategyRevisionForm } from './StrategyRevisionForm'
@@ -53,6 +53,7 @@ const revision: RuntimeRevision = {
 }
 
 describe('StrategyRevisionForm', () => {
+  beforeEach(cleanup)
   it('edits readable fields and cascades renamed group references', async () => {
     const onChange = vi.fn()
     render(
@@ -90,5 +91,40 @@ describe('StrategyRevisionForm', () => {
       />,
     )
     expect(screen.getAllByRole('option', { name: '当前筛选外 · air-1' }).length).toBeGreaterThan(0)
+  })
+
+  it('creates and edits report actions with searchable members', async () => {
+    const onChange = vi.fn()
+    const listMembers = vi.fn().mockResolvedValue([
+      { id: 'user-1', name: '张老师', username: 'zhang', email: 'zhang@example.com' },
+      { id: 'contact-1', name: '李老师', email: 'li@example.com' },
+    ])
+    render(
+      <StrategyRevisionForm
+        mode="create"
+        devices={devices}
+        listMembers={listMembers}
+        onChange={onChange}
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '＋ 添加通知动作' }))
+    fireEvent.change(screen.getByLabelText('通知内容'), { target: { value: '温度告警' } })
+    fireEvent.click(screen.getByRole('button', { name: '选择成员' }))
+    await waitFor(() => expect(listMembers).toHaveBeenCalled())
+    fireEvent.click(await screen.findByRole('button', { name: '选择成员 张老师' }))
+    fireEvent.click(screen.getByRole('button', { name: '短信 · 尚未实现' }))
+
+    await waitFor(() => {
+      const latest = onChange.mock.calls.at(-1)?.[0] as RuntimeRevision
+      expect(latest.actionGroups[0].actions[0]).toMatchObject({
+        type: 'Report',
+        userIds: ['user-1'],
+        reportTypes: ['SMS'],
+        content: '温度告警',
+      })
+    })
   })
 })

@@ -56,6 +56,13 @@ export const defaultPermissionTree: PermissionTreeNode[] = [
     ],
   },
   {
+    id: 'logs',
+    label: '日志审计',
+    children: [
+      { id: 'log-viewer', label: '查看审计与告警日志', relation: 'log_viewer' },
+    ],
+  },
+  {
     id: 'analysis',
     label: '数据分析',
     children: [

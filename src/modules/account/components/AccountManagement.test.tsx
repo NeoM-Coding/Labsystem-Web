@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Laboratory } from '@/modules/laboratory/types'
 import { useAccountStore } from '../store/accountStore'
+import { useAuthStore } from '@/modules/auth/store/authStore'
 import type { ManagedUser } from '../types'
 import { AccountManagement } from './AccountManagement'
 import type { AccountManagementDataSource } from './AccountManagement'
@@ -30,6 +31,9 @@ const laboratory: Laboratory = {
 function dataSource(overrides: Partial<AccountManagementDataSource> = {}): AccountManagementDataSource {
   return {
     listUsers: vi.fn().mockResolvedValue([user]),
+    listUserPermissions: vi.fn().mockImplementation(async (userId: string) => userId === 'operator-1'
+      ? ['user_manager', 'user_viewer']
+      : ['user_viewer', 'smart_manager']),
     listLaboratories: vi.fn().mockResolvedValue([laboratory]),
     createUser: vi.fn().mockImplementation(async (draft) => ({ id: 'user-2', ...draft })),
     updateUser: vi.fn().mockImplementation(async (id, draft) => ({ ...user, id, ...draft.user })),
@@ -42,6 +46,7 @@ describe('AccountManagement', () => {
   afterEach(() => {
     cleanup()
     useAccountStore.getState().clear()
+    useAuthStore.getState().clearSession()
   })
 
   it('loads users into a searchable management table', async () => {
@@ -59,6 +64,7 @@ describe('AccountManagement', () => {
   })
 
   it('opens an extensible permission tree from a listed user', async () => {
+    useAuthStore.getState().setSession({ id: 'operator-1', name: '管理员' })
     render(<AccountManagement dataSource={dataSource()} />)
     await screen.findByText('张老师')
 
@@ -67,8 +73,12 @@ describe('AccountManagement', () => {
     expect(screen.getByRole('dialog', { name: '编辑用户与授权' })).toBeInTheDocument()
     expect(screen.getByText('系统管理')).toBeInTheDocument()
     expect(screen.getByText('教务管理')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByLabelText('选择用户查看')).toBeChecked())
     expect(screen.getByLabelText('选择用户管理')).not.toBeChecked()
-    expect(screen.getByText(/当前列表接口不返回已有授权/)).toBeInTheDocument()
+    expect(screen.getByLabelText('选择用户管理')).not.toBeDisabled()
+    expect(screen.getByLabelText('选择策略管理')).toBeChecked()
+    expect(screen.getByLabelText('选择策略管理')).toBeDisabled()
+    expect(screen.getByText(/已回显用户现有权限/)).toBeInTheDocument()
   })
 
   it('creates a contact from the search toolbar', async () => {

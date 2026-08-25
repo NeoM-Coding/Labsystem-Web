@@ -30,6 +30,7 @@ export type AppRelation =
   | 'smart_manager'
   | 'smart_viewer'
   | 'smart_keeper'
+  | 'log_viewer'
   | 'data_analyst'
 
 export interface UserCreateDraft {

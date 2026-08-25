@@ -27,6 +27,9 @@ const previewUsers: ManagedUser[] = [
 
 const previewDataSource: AccountManagementDataSource = {
   listUsers: async () => previewUsers,
+  listUserPermissions: async (userId) => userId === 'preview-user-admin'
+    ? ['user_manager', 'user_viewer', 'laboratory_manager']
+    : ['edu_timetable_manager'],
   listLaboratories: async () => [{
     id: 'lab-preview-1',
     buildingName: '创新楼',
@@ -49,7 +52,7 @@ export default function AccountManagementPreviewPage() {
         <div><p className="eyebrow">COMPONENT PREVIEW</p><h1>用户管理组件</h1></div>
         <p>确定性数据：2 位系统用户 · 可检查搜索、列表、编辑器与授权树</p>
       </div>
-      <AccountManagement dataSource={previewDataSource} />
+      <AccountManagement dataSource={previewDataSource} operatorUserId="preview-user-admin" />
     </div>
   )
 }

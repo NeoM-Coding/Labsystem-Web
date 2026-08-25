@@ -4,9 +4,11 @@ import type { Laboratory } from '@/modules/laboratory/types'
 import {
   createContact,
   createUser,
+  listUserPermissions,
   listUsers,
   updateUser,
 } from '../api/accounts'
+import { useAuthStore } from '@/modules/auth/store/authStore'
 import { defaultPermissionTree } from '../permissionCatalog'
 import { useAccountStore } from '../store/accountStore'
 import type {
@@ -20,6 +22,7 @@ import type {
 
 export interface AccountManagementDataSource {
   listUsers: (keyword?: string) => Promise<ManagedUser[]>
+  listUserPermissions: (userId: string) => Promise<string[]>
   listLaboratories: () => Promise<Laboratory[]>
   createUser: (draft: UserCreateDraft) => Promise<ManagedUser>
   updateUser: (userId: string, draft: UserUpdateDraft) => Promise<ManagedUser>
@@ -29,10 +32,12 @@ export interface AccountManagementDataSource {
 export interface AccountManagementProps {
   dataSource?: AccountManagementDataSource
   permissionTree?: PermissionTreeNode[]
+  operatorUserId?: string
 }
 
 const accountManagementDataSource: AccountManagementDataSource = {
   listUsers,
+  listUserPermissions,
   listLaboratories: () => getLaboratories([], []),
   createUser,
   updateUser,
@@ -80,11 +85,13 @@ function SelectionCheckbox({
   checked,
   mixed = false,
   onChange,
+  disabled = false,
 }: {
   label: string
   checked: boolean
   mixed?: boolean
   onChange: () => void
+  disabled?: boolean
 }) {
   const ref = useRef<HTMLInputElement>(null)
   useEffect(() => {
@@ -98,7 +105,8 @@ function SelectionCheckbox({
       aria-label={label}
       checked={checked}
       onChange={onChange}
-      className="size-4 shrink-0 accent-[#16805a]"
+      disabled={disabled}
+      className="size-4 shrink-0 accent-[#16805a] disabled:cursor-not-allowed disabled:opacity-45"
     />
   )
 }
@@ -108,11 +116,13 @@ function PermissionTreeItem({
   depth,
   selected,
   onChange,
+  editable,
 }: {
   node: PermissionTreeNode
   depth: number
   selected: AppRelation[]
   onChange: (relations: AppRelation[]) => void
+  editable: ReadonlySet<AppRelation>
 }) {
   const [expanded, setExpanded] = useState(true)
   const relations = relationsOf(node)
@@ -120,18 +130,23 @@ function PermissionTreeItem({
   const checked = relations.length > 0 && selectedCount === relations.length
   const mixed = selectedCount > 0 && !checked
   const hasChildren = Boolean(node.children?.length)
+  const editableNodeRelations = relations.filter((relation) => editable.has(relation))
+  const locked = editableNodeRelations.length === 0
 
   const toggleSelection = () => {
     const relationSet = new Set(selected)
-    if (checked) relations.forEach((relation) => relationSet.delete(relation))
-    else relations.forEach((relation) => relationSet.add(relation))
+    if (editableNodeRelations.every((relation) => relationSet.has(relation))) {
+      editableNodeRelations.forEach((relation) => relationSet.delete(relation))
+    } else {
+      editableNodeRelations.forEach((relation) => relationSet.add(relation))
+    }
     onChange([...relationSet])
   }
 
   return (
     <li>
       <div
-        className={`group flex min-h-10 items-center gap-2 rounded-xl pr-2 transition-colors hover:bg-[#f0f6f3] ${depth === 0 ? 'mt-1 bg-[#f7faf8]' : ''}`}
+        className={`group flex min-h-10 items-center gap-2 rounded-xl pr-2 transition-colors ${locked ? 'text-[#98a49f]' : 'hover:bg-[#f0f6f3]'} ${depth === 0 ? 'mt-1 bg-[#f7faf8]' : ''}`}
         style={{ paddingLeft: `${8 + depth * 22}px` }}
       >
         {hasChildren ? (
@@ -152,14 +167,16 @@ function PermissionTreeItem({
           checked={checked}
           mixed={mixed}
           onChange={toggleSelection}
+          disabled={locked}
         />
         <button
           type="button"
-          onClick={hasChildren ? () => setExpanded((value) => !value) : toggleSelection}
-          className="min-w-0 flex-1 py-2 text-left active:opacity-70"
+          onClick={hasChildren ? () => setExpanded((value) => !value) : locked ? undefined : toggleSelection}
+          className={`min-w-0 flex-1 py-2 text-left ${locked ? 'cursor-not-allowed' : 'active:opacity-70'}`}
         >
           <span className="block truncate text-xs font-bold text-[#30483e]">{node.label}</span>
           {node.description && <span className="mt-0.5 block truncate text-[10px] text-[#85928d]">{node.description}</span>}
+          {node.relation && locked && <span className="mt-0.5 block text-[10px] font-semibold text-[#9b7a45]">你没有此权限，无法转授</span>}
         </button>
         {hasChildren && (
           <span className="shrink-0 rounded-full bg-[#e6f1ec] px-2 py-0.5 text-[10px] font-bold text-[#527066]">
@@ -176,6 +193,7 @@ function PermissionTreeItem({
               depth={depth + 1}
               selected={selected}
               onChange={onChange}
+              editable={editable}
             />
           ))}
         </ul>
@@ -188,10 +206,12 @@ export function PermissionTree({
   nodes,
   selected,
   onChange,
+  editable,
 }: {
   nodes: PermissionTreeNode[]
   selected: AppRelation[]
   onChange: (relations: AppRelation[]) => void
+  editable: ReadonlySet<AppRelation>
 }) {
   return (
     <div className="max-h-[360px] overflow-y-auto rounded-2xl border border-[#dce6e1] bg-white p-2">
@@ -203,6 +223,7 @@ export function PermissionTree({
             depth={0}
             selected={selected}
             onChange={onChange}
+            editable={editable}
           />
         ))}
       </ul>
@@ -284,6 +305,10 @@ function AccountEditor({
   onSaveUser,
   onSaveContact,
   onClose,
+  initialAppRelations,
+  editableRelations,
+  permissionsLoading,
+  permissionsError,
 }: {
   mode: EditorMode
   target: ManagedUser | null
@@ -293,6 +318,10 @@ function AccountEditor({
   onSaveUser: (draft: UserCreateDraft | UserUpdateDraft) => Promise<void>
   onSaveContact: (draft: ContactCreateDraft) => Promise<void>
   onClose: () => void
+  initialAppRelations: AppRelation[]
+  editableRelations: ReadonlySet<AppRelation>
+  permissionsLoading: boolean
+  permissionsError: string | null
 }) {
   const editing = mode === 'edit-user'
   const contactMode = mode === 'create-contact'
@@ -303,10 +332,15 @@ function AccountEditor({
     phone: target?.phone ?? '',
     email: target?.email ?? '',
     mark: target?.mark ?? '',
+    appRelations: initialAppRelations,
   }))
   const [contact, setContact] = useState(emptyContact)
   const [replaceConfirmed, setReplaceConfirmed] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setUser((current) => ({ ...current, appRelations: initialAppRelations }))
+  }, [initialAppRelations])
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -384,15 +418,17 @@ function AccountEditor({
                 <p className="mt-1 mb-3 text-xs leading-5 text-[#819089]">
                   按真实后端关系分层展示；选择父节点可以批量选择其下全部权限。
                 </p>
-                {editing && (
-                  <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-                    当前列表接口不返回已有授权。保存后，应用权限与实验室范围会被下方选择整体替换。
+                {permissionsLoading && <p role="status" className="rounded-xl bg-[#edf5f1] px-4 py-3 text-xs text-[#587067]">正在读取现有权限与可转授范围…</p>}
+                {permissionsError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-xs leading-5 text-red-700">{permissionsError}。为避免越权，权限选项已锁定。</p>}
+                {!permissionsLoading && !permissionsError && (
+                  <p className="rounded-xl bg-[#edf5f1] px-4 py-3 text-xs leading-5 text-[#587067]">
+                    已回显用户现有权限。灰色项目超出你的可转授范围，将保持原值且不可修改。
                   </p>
                 )}
                 <div className="grid grid-cols-2 gap-4 max-lg:grid-cols-1">
                   <div>
                     <p className="mb-2 text-xs font-bold text-[#65766f]">应用权限</p>
-                    <PermissionTree nodes={permissionTree} selected={user.appRelations} onChange={(appRelations) => setUser({ ...user, appRelations })} />
+                    <PermissionTree nodes={permissionTree} selected={user.appRelations} editable={editableRelations} onChange={(appRelations) => setUser({ ...user, appRelations })} />
                   </div>
                   <div>
                     <p className="mb-2 text-xs font-bold text-[#65766f]">实验室范围</p>
@@ -411,7 +447,7 @@ function AccountEditor({
         </div>
         <footer className="absolute inset-x-0 bottom-0 flex justify-end gap-3 border-t border-[#dfe8e3] bg-white/92 px-7 py-4 backdrop-blur-xl">
           <button type="button" disabled={busy} onClick={onClose} className="rounded-xl bg-[#edf3f0] px-5 py-3 text-sm font-bold active:scale-[.97]">取消</button>
-          <button type="submit" disabled={busy} className="rounded-xl bg-[#147a56] px-6 py-3 text-sm font-bold text-white active:scale-[.97] disabled:opacity-55">{busy ? '正在保存…' : '保存'}</button>
+          <button type="submit" disabled={busy || permissionsLoading || Boolean(permissionsError)} className="rounded-xl bg-[#147a56] px-6 py-3 text-sm font-bold text-white active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-55">{busy ? '正在保存…' : '保存'}</button>
         </footer>
       </form>
     </div>
@@ -427,8 +463,11 @@ function formatDate(value?: string) {
 export function AccountManagement({
   dataSource = accountManagementDataSource,
   permissionTree = defaultPermissionTree,
+  operatorUserId,
 }: AccountManagementProps) {
   const usersById = useAccountStore((state) => state.usersById)
+  const currentUserId = useAuthStore((state) => state.user?.id)
+  const effectiveOperatorUserId = operatorUserId ?? currentUserId
   const status = useAccountStore((state) => state.status)
   const storeError = useAccountStore((state) => state.error)
   const setLoading = useAccountStore((state) => state.setLoading)
@@ -440,6 +479,41 @@ export function AccountManagement({
   const [editor, setEditor] = useState<{ mode: EditorMode; target: ManagedUser | null } | null>(null)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [targetRelations, setTargetRelations] = useState<AppRelation[]>([])
+  const [editableRelations, setEditableRelations] = useState<ReadonlySet<AppRelation>>(new Set())
+  const [permissionsLoading, setPermissionsLoading] = useState(false)
+  const [permissionsError, setPermissionsError] = useState<string | null>(null)
+
+  const knownRelations = useMemo(() => new Set(permissionTree.flatMap(relationsOf)), [permissionTree])
+
+  const openEditor = async (mode: EditorMode, target: ManagedUser | null) => {
+    setNotice(null)
+    setTargetRelations([])
+    setEditableRelations(new Set())
+    setPermissionsLoading(false)
+    setPermissionsError(null)
+    setEditor({ mode, target })
+    if (mode === 'create-contact') return
+    if (!effectiveOperatorUserId) {
+      setPermissionsError('无法确认当前操作者身份')
+      return
+    }
+    setPermissionsLoading(true)
+    try {
+      const [ownedRaw, targetRaw] = await Promise.all([
+        dataSource.listUserPermissions(effectiveOperatorUserId),
+        target ? dataSource.listUserPermissions(target.id) : Promise.resolve([]),
+      ])
+      const owned = ownedRaw.filter((value): value is AppRelation => knownRelations.has(value as AppRelation))
+      const existing = targetRaw.filter((value): value is AppRelation => knownRelations.has(value as AppRelation))
+      setTargetRelations(existing)
+      setEditableRelations(new Set(owned.includes('super_admin') ? knownRelations : owned))
+    } catch (cause) {
+      setPermissionsError(cause instanceof Error ? cause.message : '权限范围加载失败')
+    } finally {
+      setPermissionsLoading(false)
+    }
+  }
 
   const load = async () => {
     setLoading()
@@ -517,10 +591,10 @@ export function AccountManagement({
             {status === 'loading' ? '刷新中…' : '刷新'}
           </button>
           <span className="mx-1 h-7 w-px bg-[#dfe7e3] max-sm:hidden" aria-hidden="true" />
-          <button type="button" onClick={() => { setNotice(null); setEditor({ mode: 'create-contact', target: null }) }} className="rounded-xl bg-[#edf3f0] px-4 py-3 text-sm font-bold text-[#176c4e] active:scale-[.97]">
+          <button type="button" onClick={() => { void openEditor('create-contact', null) }} className="rounded-xl bg-[#edf3f0] px-4 py-3 text-sm font-bold text-[#176c4e] active:scale-[.97]">
             新增联系人
           </button>
-          <button type="button" onClick={() => { setNotice(null); setEditor({ mode: 'create-user', target: null }) }} className="rounded-xl bg-[#147a56] px-5 py-3 text-sm font-bold text-white shadow-[0_7px_18px_rgb(20_122_86_/_18%)] active:scale-[.97]">
+          <button type="button" onClick={() => { void openEditor('create-user', null) }} className="rounded-xl bg-[#147a56] px-5 py-3 text-sm font-bold text-white shadow-[0_7px_18px_rgb(20_122_86_/_18%)] active:scale-[.97]">
             新增用户
           </button>
         </div>
@@ -565,7 +639,7 @@ export function AccountManagement({
                   <td className="max-w-56 px-4 py-4 text-sm text-[#687971]"><span className="block truncate" title={user.mark}>{user.mark || '—'}</span></td>
                   <td className="whitespace-nowrap px-4 py-4 text-xs text-[#77867f]">{formatDate(user.createAt)}</td>
                   <td className="sticky right-0 whitespace-nowrap bg-white px-5 py-4 text-right transition-colors group-hover:bg-[#f8fbf9]">
-                    <button type="button" onClick={() => { setNotice(null); setEditor({ mode: 'edit-user', target: user }) }} className="rounded-lg px-3 py-2 text-xs font-bold text-[#176c4e] hover:bg-[#e9f3ef] active:scale-[.96]">
+                    <button type="button" onClick={() => { void openEditor('edit-user', user) }} className="rounded-lg px-3 py-2 text-xs font-bold text-[#176c4e] hover:bg-[#e9f3ef] active:scale-[.96]">
                       编辑与授权
                     </button>
                   </td>
@@ -593,6 +667,10 @@ export function AccountManagement({
           onSaveUser={saveUser}
           onSaveContact={saveContact}
           onClose={() => setEditor(null)}
+          initialAppRelations={targetRelations}
+          editableRelations={editableRelations}
+          permissionsLoading={permissionsLoading}
+          permissionsError={permissionsError}
         />
       )}
     </section>

@@ -15,6 +15,13 @@ export function listUsers(keyword = '') {
   )
 }
 
+export function listUserPermissions(userId: string) {
+  return apiRequest<string[]>(
+    () => http.get(`/users/${userId}/permissions`),
+    '加载用户权限失败',
+  )
+}
+
 export function createUser(draft: UserCreateDraft) {
   return apiRequest<ManagedUser>(
     () => http.post('/users', draft),

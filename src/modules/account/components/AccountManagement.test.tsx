@@ -1,6 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { Laboratory } from '@/modules/laboratory/types'
 import { useAccountStore } from '../store/accountStore'
 import { useAuthStore } from '@/modules/auth/store/authStore'
 import type { ManagedUser } from '../types'
@@ -17,24 +16,12 @@ const user: ManagedUser = {
   createAt: '2026-07-01T08:00:00Z',
 }
 
-const laboratory: Laboratory = {
-  id: 'lab-1',
-  laboratoryName: '16-201',
-  buildingName: '创新楼',
-  orgName: '计算机学院',
-  extra: null,
-  managers: [],
-  createAt: '',
-  updateAt: '',
-}
-
 function dataSource(overrides: Partial<AccountManagementDataSource> = {}): AccountManagementDataSource {
   return {
     listUsers: vi.fn().mockResolvedValue([user]),
     listUserPermissions: vi.fn().mockImplementation(async (userId: string) => userId === 'operator-1'
       ? ['user_manager', 'user_viewer']
       : ['user_viewer', 'smart_manager']),
-    listLaboratories: vi.fn().mockResolvedValue([laboratory]),
     createUser: vi.fn().mockImplementation(async (draft) => ({ id: 'user-2', ...draft })),
     updateUser: vi.fn().mockImplementation(async (id, draft) => ({ ...user, id, ...draft.user })),
     createContact: vi.fn().mockImplementation(async (draft) => ({ id: 'contact-1', ...draft })),

@@ -41,13 +41,11 @@ export interface UserCreateDraft {
   email: string
   mark: string
   appRelations: AppRelation[]
-  laboratoryIds: string[]
 }
 
 export interface UserUpdateDraft {
   user: Partial<ManagedUser>
   appRelations: AppRelation[]
-  laboratoryIds: string[]
 }
 
 export interface ContactCreateDraft {

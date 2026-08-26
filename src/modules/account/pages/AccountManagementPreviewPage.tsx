@@ -30,16 +30,6 @@ const previewDataSource: AccountManagementDataSource = {
   listUserPermissions: async (userId) => userId === 'preview-user-admin'
     ? ['user_manager', 'user_viewer', 'laboratory_manager']
     : ['edu_timetable_manager'],
-  listLaboratories: async () => [{
-    id: 'lab-preview-1',
-    buildingName: '创新楼',
-    orgName: '计算机学院',
-    laboratoryName: '16-201',
-    extra: null,
-    managers: [],
-    createAt: '2026-07-01T08:00:00Z',
-    updateAt: '2026-07-01T08:00:00Z',
-  }],
   createUser: async (draft) => ({ id: `preview-user-${sequence++}`, ...draft, password: '' }),
   updateUser: async (userId, draft) => ({ id: userId, name: draft.user.name ?? '预览用户', ...draft.user } as ManagedUser),
   createContact: async (draft) => ({ id: `preview-contact-${sequence++}`, ...draft }),

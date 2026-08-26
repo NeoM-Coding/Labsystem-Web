@@ -1,5 +1,5 @@
 import { apiRequest, http } from '@/shared/api/http'
-import type { ApiResponse, Laboratory, LaboratoryDraft, OptionPair } from '../types'
+import type { ApiResponse, Laboratory, LaboratoryDraft, LaboratoryMembers, OptionPair } from '../types'
 
 interface LaboratoryWriteResponse extends Omit<Laboratory, 'managers'> {
   manager?: Laboratory['managers']
@@ -60,5 +60,19 @@ export async function deleteLaboratory(laboratoryId: string) {
   await apiRequest<null>(
     () => http.delete(`/laboratories/${laboratoryId}`),
     '删除实验室失败',
+  )
+}
+
+export function getLaboratoryMembers(laboratoryId: string) {
+  return apiRequest<LaboratoryMembers>(
+    () => http.get(`/laboratories/${laboratoryId}/members`),
+    '加载实验室成员失败',
+  )
+}
+
+export function replaceLaboratoryViewers(laboratoryId: string, userIds: string[]) {
+  return apiRequest<LaboratoryMembers>(
+    () => http.put(`/laboratories/${laboratoryId}/members`, { userIds }),
+    '更新实验室可见成员失败',
   )
 }

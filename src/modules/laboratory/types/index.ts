@@ -30,6 +30,11 @@ export interface LaboratoryManager {
   mark?: string
 }
 
+export interface LaboratoryMembers {
+  owners: LaboratoryManager[]
+  viewers: LaboratoryManager[]
+}
+
 export interface LaboratoryDraft {
   buildingName: string
   orgName: string

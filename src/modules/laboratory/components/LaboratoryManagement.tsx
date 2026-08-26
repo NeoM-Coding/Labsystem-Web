@@ -1,10 +1,12 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { listUsers } from '@/modules/account/api/accounts'
+import { getLaboratoryMembers, replaceLaboratoryViewers } from '../api/laboratories'
 import { useLaboratoryStore } from '../store/laboratoryStore'
 import type {
   Laboratory,
   LaboratoryDraft,
   LaboratoryManager,
+  LaboratoryMembers,
 } from '../types'
 
 export interface LaboratoryExtraColumn {
@@ -34,6 +36,8 @@ export interface LaboratoryManagementProps {
   preview?: boolean
   extraColumns?: LaboratoryExtraColumn[]
   listMembers?: (keyword?: string) => Promise<LaboratoryManager[]>
+  loadAuthorizationMembers?: (laboratoryId: string) => Promise<LaboratoryMembers>
+  saveViewers?: (laboratoryId: string, userIds: string[]) => Promise<LaboratoryMembers>
 }
 
 const inputClass = 'h-11 min-w-0 rounded-xl border border-[#d9e4df] bg-white px-3 text-sm text-[#20342c] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#48a17f] focus:shadow-[0_0_0_3px_rgb(72_161_127_/_13%)]'
@@ -363,6 +367,132 @@ function ManagerDetailsDialog({
             </div>
           ))}
         </dl>
+      </section>
+    </div>
+  )
+}
+
+function LaboratoryMembersDialog({
+  laboratory,
+  listMembers,
+  loadMembers,
+  saveViewers,
+  onEditManagers,
+  onClose,
+}: {
+  laboratory: Laboratory
+  listMembers: (keyword?: string) => Promise<LaboratoryManager[]>
+  loadMembers: (laboratoryId: string) => Promise<LaboratoryMembers>
+  saveViewers: (laboratoryId: string, userIds: string[]) => Promise<LaboratoryMembers>
+  onEditManagers: () => void
+  onClose: () => void
+}) {
+  const [members, setMembers] = useState<LaboratoryMembers>({ owners: [], viewers: [] })
+  const [options, setOptions] = useState<LaboratoryManager[]>([])
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState<'loading' | 'ready' | 'saving' | 'error'>('loading')
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    void Promise.all([loadMembers(laboratory.id), listMembers()])
+      .then(([loaded, candidates]) => {
+        if (!active) return
+        setMembers(loaded)
+        setSelectedIds(loaded.viewers.flatMap((member) => member.id ? [member.id] : []))
+        setOptions(candidates.filter((member) => Boolean(member.id && member.username)))
+        setStatus('ready')
+      })
+      .catch((cause: unknown) => {
+        if (!active) return
+        setError(cause instanceof Error ? cause.message : '实验室成员加载失败')
+        setStatus('error')
+      })
+    return () => { active = false }
+  }, [laboratory.id, listMembers, loadMembers])
+
+  const ownerIds = new Set(members.owners.flatMap((member) => member.id ? [member.id] : []))
+  const allCandidates = [...members.viewers, ...options].filter((member, index, values) => (
+    member.id && !ownerIds.has(member.id)
+      && values.findIndex((candidate) => candidate.id === member.id) === index
+  ))
+  const query = search.trim().toLowerCase()
+  const filteredCandidates = allCandidates.filter((member) => !query || [
+    member.name,
+    member.username ?? '',
+    member.email ?? '',
+  ].some((value) => value.toLowerCase().includes(query)))
+
+  const submit = async () => {
+    setStatus('saving')
+    setError(null)
+    try {
+      const updated = await saveViewers(laboratory.id, selectedIds)
+      setMembers(updated)
+      setSelectedIds(updated.viewers.flatMap((member) => member.id ? [member.id] : []))
+      setStatus('ready')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '更新实验室可见成员失败')
+      setStatus('ready')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[96] grid place-items-center p-5" role="dialog" aria-modal="true" aria-label={`${laboratory.laboratoryName}成员与授权`}>
+      <button type="button" aria-label="关闭成员与授权" onClick={status === 'saving' ? undefined : onClose} className="absolute inset-0 bg-[#092018]/30 backdrop-blur-[3px]" />
+      <section className="relative flex max-h-[min(820px,calc(100vh-40px))] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-white/70 bg-[#f9fbfa]/97 shadow-[0_24px_80px_rgb(8_39_29_/_25%)] backdrop-blur-2xl">
+        <header className="flex items-start justify-between gap-4 px-6 pt-6 pb-5">
+          <div className="min-w-0">
+            <p className="m-0 text-xs font-extrabold tracking-[.12em] text-[#18825c]">MEMBERS & ACCESS</p>
+            <h2 className="mt-1 mb-0 truncate text-2xl">{laboratory.laboratoryName}</h2>
+            <p className="mt-1 mb-0 text-xs text-[#72827b]">所有者负责授权，负责人维护业务资料，可见成员获得实验室数据访问权。</p>
+          </div>
+          <button type="button" disabled={status === 'saving'} onClick={onClose} className="rounded-xl bg-[#edf3f0] px-3 py-2 text-sm font-bold active:scale-[.97] disabled:opacity-50">关闭</button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-24">
+          {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-700">{error}</p>}
+          <section className="rounded-2xl border border-[#dce6e1] bg-white p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div><h3 className="m-0 text-sm">所有者</h3><p className="mt-1 mb-0 text-xs text-[#819089]">由创建关系确定，当前接口不允许转移或移除。</p></div>
+              <span className="rounded-full bg-[#e7f3ed] px-2.5 py-1 text-[10px] font-bold text-[#176c4e]">受保护</span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {members.owners.map((owner) => <span key={memberIdentity(owner)} className="rounded-xl bg-[#f0f6f3] px-3 py-2 text-xs font-bold text-[#30483e]">{owner.name}</span>)}
+              {status === 'loading' && <span className="text-xs text-[#819089]">正在读取…</span>}
+              {status !== 'loading' && members.owners.length === 0 && <span className="text-xs text-[#9a6b43]">未返回所有者</span>}
+            </div>
+          </section>
+          <section className="mt-4 rounded-2xl border border-[#dce6e1] bg-white p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div><h3 className="m-0 text-sm">业务负责人</h3><p className="mt-1 mb-0 text-xs text-[#819089]">负责人属于实验室资料，不自动获得系统访问权限。</p></div>
+              <button type="button" onClick={onEditManagers} className="rounded-lg bg-[#e8f3ee] px-3 py-2 text-xs font-bold text-[#176c4e] active:scale-[.97]">管理负责人</button>
+            </div>
+            <p className="mt-3 mb-0 text-xs font-semibold text-[#4f655b]">{laboratory.managers.map((manager) => manager.name).join('、') || '尚未设置负责人'}</p>
+          </section>
+          <section className="mt-4 rounded-2xl border border-[#dce6e1] bg-white p-4">
+            <div><h3 className="m-0 text-sm">可见成员</h3><p className="mt-1 mb-3 text-xs text-[#819089]">仅展示可登录的系统用户；保存时整体替换直接 viewer，所有者不受影响。</p></div>
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索姓名、用户名或邮箱" className={`${inputClass} w-full`} />
+            <div className="mt-3 max-h-64 overflow-y-auto rounded-xl bg-[#f7faf8] p-2">
+              {filteredCandidates.map((member) => {
+                const id = member.id as string
+                const checked = selectedIds.includes(id)
+                return (
+                  <label key={id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-3 hover:bg-white active:opacity-70">
+                    <input aria-label={`可见成员 ${member.name}`} type="checkbox" checked={checked} onChange={() => setSelectedIds(checked ? selectedIds.filter((value) => value !== id) : [...selectedIds, id])} className="size-4 accent-[#16805a]" />
+                    <span className="min-w-0 flex-1"><strong className="block truncate text-xs text-[#30483e]">{member.name}</strong><span className="block truncate text-[10px] text-[#819089]">@{member.username}</span></span>
+                  </label>
+                )
+              })}
+              {status === 'loading' && <p className="m-0 py-6 text-center text-xs text-[#819089]">正在加载成员…</p>}
+              {status !== 'loading' && filteredCandidates.length === 0 && <p className="m-0 py-6 text-center text-xs text-[#819089]">没有匹配的系统用户</p>}
+            </div>
+          </section>
+        </div>
+        <footer className="absolute inset-x-0 bottom-0 flex items-center justify-between border-t border-[#dfe8e3] bg-white/92 px-6 py-4 backdrop-blur-xl">
+          <span className="text-xs font-semibold text-[#71827a]">已选择 {selectedIds.length} 位可见成员</span>
+          <button type="button" disabled={status !== 'ready'} onClick={() => void submit()} className="rounded-xl bg-[#147a56] px-5 py-2.5 text-sm font-bold text-white active:scale-[.97] disabled:opacity-50">{status === 'saving' ? '正在保存…' : '保存可见成员'}</button>
+        </footer>
       </section>
     </div>
   )
@@ -739,6 +869,8 @@ export function LaboratoryManagement({
   preview = false,
   extraColumns = [],
   listMembers = listLaboratoryMembers,
+  loadAuthorizationMembers = getLaboratoryMembers,
+  saveViewers = replaceLaboratoryViewers,
 }: LaboratoryManagementProps) {
   const store = useLaboratoryStore()
   const [search, setSearch] = useState('')
@@ -748,6 +880,7 @@ export function LaboratoryManagement({
     laboratory: Laboratory
     manager: LaboratoryManager
   } | null>(null)
+  const [authorizationLaboratory, setAuthorizationLaboratory] = useState<Laboratory | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -895,6 +1028,7 @@ export function LaboratoryManagement({
                     })}
                     <td className="whitespace-nowrap px-4 py-4 text-xs text-[#77867f]">{new Date(laboratory.updateAt).toLocaleDateString('zh-CN')}</td>
                     <td className="sticky right-0 whitespace-nowrap bg-white px-5 py-4 text-right transition-colors group-hover:bg-[#f8fbf9]">
+                      <button type="button" onClick={() => setAuthorizationLaboratory(laboratory)} className="rounded-lg px-3 py-2 text-xs font-bold text-[#176c4e] hover:bg-[#e9f3ef] active:scale-[.96]">成员与授权</button>
                       <button type="button" onClick={() => setEditing(laboratory)} className="rounded-lg px-3 py-2 text-xs font-bold text-[#176c4e] hover:bg-[#e9f3ef] active:scale-[.96]">编辑</button>
                       <button type="button" onClick={() => setDeleting(laboratory)} className="rounded-lg px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50 active:scale-[.96]">删除</button>
                     </td>
@@ -915,6 +1049,19 @@ export function LaboratoryManagement({
           laboratory={managerDetails.laboratory}
           manager={managerDetails.manager}
           onClose={() => setManagerDetails(null)}
+        />
+      )}
+      {authorizationLaboratory && (
+        <LaboratoryMembersDialog
+          laboratory={authorizationLaboratory}
+          listMembers={listMembers}
+          loadMembers={loadAuthorizationMembers}
+          saveViewers={saveViewers}
+          onEditManagers={() => {
+            setAuthorizationLaboratory(null)
+            setEditing(authorizationLaboratory)
+          }}
+          onClose={() => setAuthorizationLaboratory(null)}
         />
       )}
       {editing !== undefined && (

@@ -72,6 +72,11 @@ const listPreviewMembers = async (keyword = '') => {
   ].some((value) => value.toLowerCase().includes(query)))
 }
 
+const previewAuthorizationMembers = {
+  owners: [previewMembers[0]],
+  viewers: [previewMembers[2]],
+}
+
 export default function LaboratoryManagementPreviewPage() {
   const count = useLaboratoryStore((state) => Object.keys(state.laboratoriesById).length)
   const hydrate = useLaboratoryStore((state) => state.hydratePreview)
@@ -92,6 +97,11 @@ export default function LaboratoryManagementPreviewPage() {
       <LaboratoryManagement
         preview
         listMembers={listPreviewMembers}
+        loadAuthorizationMembers={async () => previewAuthorizationMembers}
+        saveViewers={async (_laboratoryId, userIds) => ({
+          owners: previewAuthorizationMembers.owners,
+          viewers: previewMembers.filter((member) => member.id && userIds.includes(member.id)),
+        })}
         extraColumns={[
           {
             key: 'capacity',

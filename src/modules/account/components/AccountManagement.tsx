@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { getLaboratories } from '@/modules/laboratory/api/laboratories'
-import type { Laboratory } from '@/modules/laboratory/types'
 import {
   createContact,
   createUser,
@@ -23,7 +21,6 @@ import type {
 export interface AccountManagementDataSource {
   listUsers: (keyword?: string) => Promise<ManagedUser[]>
   listUserPermissions: (userId: string) => Promise<string[]>
-  listLaboratories: () => Promise<Laboratory[]>
   createUser: (draft: UserCreateDraft) => Promise<ManagedUser>
   updateUser: (userId: string, draft: UserUpdateDraft) => Promise<ManagedUser>
   createContact: (draft: ContactCreateDraft) => Promise<ManagedUser>
@@ -38,7 +35,6 @@ export interface AccountManagementProps {
 const accountManagementDataSource: AccountManagementDataSource = {
   listUsers,
   listUserPermissions,
-  listLaboratories: () => getLaboratories([], []),
   createUser,
   updateUser,
   createContact,
@@ -54,7 +50,6 @@ const emptyUser = (): UserCreateDraft => ({
   email: '',
   mark: '',
   appRelations: [],
-  laboratoryIds: [],
 })
 
 const emptyContact = (): ContactCreateDraft => ({
@@ -231,75 +226,11 @@ export function PermissionTree({
   )
 }
 
-function LaboratoryScopePicker({
-  laboratories,
-  selected,
-  onChange,
-}: {
-  laboratories: Laboratory[]
-  selected: string[]
-  onChange: (ids: string[]) => void
-}) {
-  const groups = useMemo(() => {
-    const result = new Map<string, Laboratory[]>()
-    laboratories.forEach((laboratory) => {
-      const key = `${laboratory.buildingName} · ${laboratory.orgName || '未设置单位'}`
-      result.set(key, [...(result.get(key) ?? []), laboratory])
-    })
-    return [...result.entries()]
-  }, [laboratories])
-
-  return (
-    <div className="max-h-[360px] overflow-y-auto rounded-2xl border border-[#dce6e1] bg-white p-2">
-      {groups.map(([group, items]) => {
-        const selectedCount = items.filter((item) => selected.includes(item.id)).length
-        const checked = selectedCount === items.length
-        return (
-          <div key={group} className="mb-1 last:mb-0">
-            <label className="flex min-h-10 items-center gap-2 rounded-xl bg-[#f7faf8] px-3 hover:bg-[#f0f6f3]">
-              <SelectionCheckbox
-                label={`选择${group}`}
-                checked={checked}
-                mixed={selectedCount > 0 && !checked}
-                onChange={() => {
-                  const ids = new Set(selected)
-                  if (checked) items.forEach((item) => ids.delete(item.id))
-                  else items.forEach((item) => ids.add(item.id))
-                  onChange([...ids])
-                }}
-              />
-              <span className="min-w-0 flex-1 truncate text-xs font-bold text-[#30483e]">{group}</span>
-              <span className="rounded-full bg-[#e6f1ec] px-2 py-0.5 text-[10px] font-bold text-[#527066]">{selectedCount}/{items.length}</span>
-            </label>
-            <div className="ml-5 border-l border-[#dfe8e3] pl-3">
-              {items.map((laboratory) => (
-                <label key={laboratory.id} className="flex min-h-9 items-center gap-2 rounded-lg px-2 text-xs hover:bg-[#f0f6f3]">
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(laboratory.id)}
-                    onChange={() => onChange(selected.includes(laboratory.id)
-                      ? selected.filter((id) => id !== laboratory.id)
-                      : [...selected, laboratory.id])}
-                    className="size-4 accent-[#16805a]"
-                  />
-                  <span className="min-w-0 truncate">{laboratory.laboratoryName}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )
-      })}
-      {groups.length === 0 && <p className="m-0 px-3 py-8 text-center text-xs text-[#87958f]">没有可分配的实验室</p>}
-    </div>
-  )
-}
-
 type EditorMode = 'create-user' | 'edit-user' | 'create-contact'
 
 function AccountEditor({
   mode,
   target,
-  laboratories,
   permissionTree,
   busy,
   onSaveUser,
@@ -312,7 +243,6 @@ function AccountEditor({
 }: {
   mode: EditorMode
   target: ManagedUser | null
-  laboratories: Laboratory[]
   permissionTree: PermissionTreeNode[]
   busy: boolean
   onSaveUser: (draft: UserCreateDraft | UserUpdateDraft) => Promise<void>
@@ -366,7 +296,6 @@ function AccountEditor({
             mark: user.mark,
           },
           appRelations: user.appRelations,
-          laboratoryIds: user.laboratoryIds,
         })
       } else {
         await onSaveUser(user)
@@ -425,20 +354,14 @@ function AccountEditor({
                     已回显用户现有权限。灰色项目超出你的可转授范围，将保持原值且不可修改。
                   </p>
                 )}
-                <div className="grid grid-cols-2 gap-4 max-lg:grid-cols-1">
-                  <div>
-                    <p className="mb-2 text-xs font-bold text-[#65766f]">应用权限</p>
-                    <PermissionTree nodes={permissionTree} selected={user.appRelations} editable={editableRelations} onChange={(appRelations) => setUser({ ...user, appRelations })} />
-                  </div>
-                  <div>
-                    <p className="mb-2 text-xs font-bold text-[#65766f]">实验室范围</p>
-                    <LaboratoryScopePicker laboratories={laboratories} selected={user.laboratoryIds} onChange={(laboratoryIds) => setUser({ ...user, laboratoryIds })} />
-                  </div>
+                <div>
+                  <p className="mb-2 text-xs font-bold text-[#65766f]">应用权限</p>
+                  <PermissionTree nodes={permissionTree} selected={user.appRelations} editable={editableRelations} onChange={(appRelations) => setUser({ ...user, appRelations })} />
                 </div>
                 {editing && (
                   <label className="mt-4 flex items-start gap-3 rounded-xl bg-amber-50 p-4 text-xs leading-5 text-amber-950">
                     <input type="checkbox" checked={replaceConfirmed} onChange={(event) => setReplaceConfirmed(event.target.checked)} className="mt-0.5 size-4 accent-amber-700" />
-                    我确认已核对完整授权；未选中的应用权限和实验室范围将被撤销。
+                    我确认已核对完整授权；未选中的应用权限将被撤销。实验室可见成员请在实验室管理页维护。
                   </label>
                 )}
               </section>
@@ -474,7 +397,6 @@ export function AccountManagement({
   const replaceUsers = useAccountStore((state) => state.replaceUsers)
   const upsertUser = useAccountStore((state) => state.upsertUser)
   const setStoreError = useAccountStore((state) => state.setError)
-  const [laboratories, setLaboratories] = useState<Laboratory[]>([])
   const [search, setSearch] = useState('')
   const [editor, setEditor] = useState<{ mode: EditorMode; target: ManagedUser | null } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -526,9 +448,6 @@ export function AccountManagement({
 
   useEffect(() => {
     void load()
-    void dataSource.listLaboratories().then(setLaboratories).catch((cause: unknown) => {
-      setStoreError(cause instanceof Error ? cause.message : '实验室范围加载失败')
-    })
   // dataSource is an injectable stable integration boundary.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataSource])
@@ -661,7 +580,6 @@ export function AccountManagement({
           key={`${editor.mode}-${editor.target?.id ?? 'new'}`}
           mode={editor.mode}
           target={editor.target}
-          laboratories={laboratories}
           permissionTree={permissionTree}
           busy={busy}
           onSaveUser={saveUser}

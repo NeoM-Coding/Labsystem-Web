@@ -153,4 +153,42 @@ describe('LaboratoryManagement', () => {
     expect(screen.getAllByText('联系人')).toHaveLength(2)
     expect(screen.getByRole('button', { name: '移除负责人 李老师' })).toBeInTheDocument()
   })
+
+  it('loads owners and replaces direct viewers from the laboratory row', async () => {
+    useLaboratoryStore.getState().hydratePreview([laboratory])
+    const loadAuthorizationMembers = vi.fn().mockResolvedValue({
+      owners: [{ id: 'owner-1', name: '创建人', username: 'owner' }],
+      viewers: [{ id: 'user-2', name: '李老师', username: 'li' }],
+    })
+    const saveViewers = vi.fn().mockResolvedValue({
+      owners: [{ id: 'owner-1', name: '创建人', username: 'owner' }],
+      viewers: [{ id: 'user-3', name: '王老师', username: 'wang' }],
+    })
+    const listMembers = vi.fn().mockResolvedValue([
+      { id: 'owner-1', name: '创建人', username: 'owner' },
+      { id: 'user-2', name: '李老师', username: 'li' },
+      { id: 'user-3', name: '王老师', username: 'wang' },
+      { id: 'contact-1', name: '联系人' },
+    ])
+
+    render(
+      <LaboratoryManagement
+        preview
+        listMembers={listMembers}
+        loadAuthorizationMembers={loadAuthorizationMembers}
+        saveViewers={saveViewers}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: '成员与授权' }))
+
+    expect(await screen.findByText('创建人')).toBeInTheDocument()
+    expect(screen.getByText('受保护')).toBeInTheDocument()
+    expect(screen.getByLabelText('可见成员 李老师')).toBeChecked()
+    expect(screen.queryByLabelText('可见成员 联系人')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('可见成员 李老师'))
+    fireEvent.click(screen.getByLabelText('可见成员 王老师'))
+    fireEvent.click(screen.getByRole('button', { name: '保存可见成员' }))
+
+    await waitFor(() => expect(saveViewers).toHaveBeenCalledWith('lab-201', ['user-3']))
+  })
 })

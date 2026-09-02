@@ -34,6 +34,7 @@ interface LaboratoryFilterBarProps {
   queryScope?: string
   embedded?: boolean
   selectAllOnResolve?: boolean
+  selectFirstOnResolve?: boolean
 }
 
 const defaultDataSource: LaboratoryFilterDataSource = {
@@ -237,6 +238,7 @@ export function LaboratoryFilterBar({
   queryScope = 'application',
   embedded = false,
   selectAllOnResolve = true,
+  selectFirstOnResolve = false,
 }: LaboratoryFilterBarProps = {}) {
   const buildingNames = useLaboratoryFilterStore((state) => state.buildingNames)
   const orgNames = useLaboratoryFilterStore((state) => state.orgNames)
@@ -246,6 +248,9 @@ export function LaboratoryFilterBar({
   const setLaboratoryIds = useLaboratoryFilterStore((state) => state.setLaboratoryIds)
   const setResolution = useLaboratoryFilterStore((state) => state.setResolution)
   const clearFilters = useLaboratoryFilterStore((state) => state.clearFilters)
+  const defaultedBuildings = useRef(false)
+  const defaultedOrganizations = useRef(false)
+  const defaultedLaboratory = useRef(false)
 
   const buildingsQuery = useQuery({
     queryKey: ['laboratory-options', queryScope, 'buildings'],
@@ -272,7 +277,10 @@ export function LaboratoryFilterBar({
     [organizationsQuery.data],
   )
   const isResolving = laboratoriesQuery.isPending || laboratoriesQuery.isFetching
-  const availableLaboratories = laboratoriesQuery.data ?? []
+  const availableLaboratories = useMemo(
+    () => laboratoriesQuery.data ?? [],
+    [laboratoriesQuery.data],
+  )
   const selectedCount = laboratoryIds.length
   const matchedCount = laboratoriesQuery.data?.length ?? 0
   const allLaboratoriesSelected = matchedCount > 0 && selectedCount === matchedCount
@@ -287,6 +295,24 @@ export function LaboratoryFilterBar({
       selectAllOnResolve,
     )
   }, [isResolving, laboratoriesQuery.data, selectAllOnResolve, setResolution])
+
+  useEffect(() => {
+    if (!selectFirstOnResolve || defaultedBuildings.current || buildingOptions.length === 0) return
+    defaultedBuildings.current = true
+    if (buildingNames.length === 0) setBuildingNames([buildingOptions[0]])
+  }, [buildingNames.length, buildingOptions, selectFirstOnResolve, setBuildingNames])
+
+  useEffect(() => {
+    if (!selectFirstOnResolve || defaultedOrganizations.current || organizationOptions.length === 0) return
+    defaultedOrganizations.current = true
+    if (orgNames.length === 0) setOrgNames([organizationOptions[0]])
+  }, [orgNames.length, organizationOptions, selectFirstOnResolve, setOrgNames])
+
+  useEffect(() => {
+    if (!selectFirstOnResolve || defaultedLaboratory.current || isResolving || availableLaboratories.length === 0) return
+    defaultedLaboratory.current = true
+    if (laboratoryIds.length === 0) setLaboratoryIds([availableLaboratories[0].id])
+  }, [availableLaboratories, isResolving, laboratoryIds.length, selectFirstOnResolve, setLaboratoryIds])
 
   return (
     <section

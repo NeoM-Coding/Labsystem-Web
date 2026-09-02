@@ -377,14 +377,12 @@ function LaboratoryMembersDialog({
   listMembers,
   loadMembers,
   saveViewers,
-  onEditManagers,
   onClose,
 }: {
   laboratory: Laboratory
   listMembers: (keyword?: string) => Promise<LaboratoryManager[]>
   loadMembers: (laboratoryId: string) => Promise<LaboratoryMembers>
   saveViewers: (laboratoryId: string, userIds: string[]) => Promise<LaboratoryMembers>
-  onEditManagers: () => void
   onClose: () => void
 }) {
   const [members, setMembers] = useState<LaboratoryMembers>({ owners: [], viewers: [] })
@@ -446,7 +444,7 @@ function LaboratoryMembersDialog({
           <div className="min-w-0">
             <p className="m-0 text-xs font-extrabold tracking-[.12em] text-[#18825c]">MEMBERS & ACCESS</p>
             <h2 className="mt-1 mb-0 truncate text-2xl">{laboratory.laboratoryName}</h2>
-            <p className="mt-1 mb-0 text-xs text-[#72827b]">所有者负责授权，负责人维护业务资料，可见成员获得实验室数据访问权。</p>
+            <p className="mt-1 mb-0 text-xs text-[#72827b]">所有者负责授权，可见成员获得实验室数据访问权。</p>
           </div>
           <button type="button" disabled={status === 'saving'} onClick={onClose} className="rounded-xl bg-[#edf3f0] px-3 py-2 text-sm font-bold active:scale-[.97] disabled:opacity-50">关闭</button>
         </header>
@@ -462,13 +460,6 @@ function LaboratoryMembersDialog({
               {status === 'loading' && <span className="text-xs text-[#819089]">正在读取…</span>}
               {status !== 'loading' && members.owners.length === 0 && <span className="text-xs text-[#9a6b43]">未返回所有者</span>}
             </div>
-          </section>
-          <section className="mt-4 rounded-2xl border border-[#dce6e1] bg-white p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div><h3 className="m-0 text-sm">业务负责人</h3><p className="mt-1 mb-0 text-xs text-[#819089]">负责人属于实验室资料，不自动获得系统访问权限。</p></div>
-              <button type="button" onClick={onEditManagers} className="rounded-lg bg-[#e8f3ee] px-3 py-2 text-xs font-bold text-[#176c4e] active:scale-[.97]">管理负责人</button>
-            </div>
-            <p className="mt-3 mb-0 text-xs font-semibold text-[#4f655b]">{laboratory.managers.map((manager) => manager.name).join('、') || '尚未设置负责人'}</p>
           </section>
           <section className="mt-4 rounded-2xl border border-[#dce6e1] bg-white p-4">
             <div><h3 className="m-0 text-sm">可见成员</h3><p className="mt-1 mb-3 text-xs text-[#819089]">仅展示可登录的系统用户；保存时整体替换直接 viewer，所有者不受影响。</p></div>
@@ -1057,10 +1048,6 @@ export function LaboratoryManagement({
           listMembers={listMembers}
           loadMembers={loadAuthorizationMembers}
           saveViewers={saveViewers}
-          onEditManagers={() => {
-            setAuthorizationLaboratory(null)
-            setEditing(authorizationLaboratory)
-          }}
           onClose={() => setAuthorizationLaboratory(null)}
         />
       )}

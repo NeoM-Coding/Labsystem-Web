@@ -49,7 +49,9 @@ export function SchedulingWorkspace({
 
   useEffect(() => {
     if (!initiallySelectAllLaboratories) {
-      useLaboratoryFilterStore.getState().clearLaboratorySelection()
+      const filterStore = useLaboratoryFilterStore.getState()
+      filterStore.clearFilters()
+      filterStore.clearLaboratorySelection()
     }
   }, [initiallySelectAllLaboratories])
 
@@ -212,6 +214,7 @@ export function SchedulingWorkspace({
         queryScope={filterQueryScope}
         embedded
         selectAllOnResolve={initiallySelectAllLaboratories}
+        selectFirstOnResolve={!initiallySelectAllLaboratories}
       />
       <div className="mt-4 rounded-3xl border border-[#dce6e1] bg-white p-4 shadow-[0_10px_34px_rgb(17_48_38_/_5%)]">
         <div className="flex flex-wrap items-center gap-3">

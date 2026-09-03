@@ -56,6 +56,16 @@ const NotificationCenterPreviewPage = lazy(
 const AuditLogPage = lazy(() => import('@/modules/log/pages/AuditLogPage'))
 const AlertLogPage = lazy(() => import('@/modules/log/pages/AlertLogPage'))
 const LogCenterPreviewPage = lazy(() => import('@/modules/log/pages/LogCenterPreviewPage'))
+const EduAnalysisPage = lazy(() => import('@/modules/analysis/pages/EduAnalysisPage'))
+const AirConditionAnalysisPage = lazy(
+  () => import('@/modules/analysis/pages/AirConditionAnalysisPage'),
+)
+const EnergyAnalysisPage = lazy(
+  () => import('@/modules/analysis/pages/EnergyAnalysisPage'),
+)
+const EduAnalysisPreviewPage = lazy(
+  () => import('@/modules/analysis/pages/EduAnalysisPreviewPage'),
+)
 
 const render = (element: React.ReactNode) => (
   <Suspense fallback={<PageLoader />}>{element}</Suspense>
@@ -85,6 +95,9 @@ export const router = createBrowserRouter([
           { path: 'edu/scheduling', element: render(<SchedulingPage />) },
           { path: 'logs/audit', element: render(<AuditLogPage />) },
           { path: 'logs/alerts', element: render(<AlertLogPage />) },
+          { path: 'analysis/education', element: render(<EduAnalysisPage />) },
+          { path: 'analysis/air-condition', element: render(<AirConditionAnalysisPage />) },
+          { path: 'analysis/energy', element: render(<EnergyAnalysisPage />) },
           {
             path: 'previews/laboratory-filter',
             element: render(<LaboratoryFilterPreviewPage />),
@@ -132,6 +145,10 @@ export const router = createBrowserRouter([
           {
             path: 'previews/log-center',
             element: render(<LogCenterPreviewPage />),
+          },
+          {
+            path: 'previews/edu-analysis',
+            element: render(<EduAnalysisPreviewPage />),
           },
         ],
       },

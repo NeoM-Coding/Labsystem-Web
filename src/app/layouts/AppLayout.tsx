@@ -25,9 +25,10 @@ const navigationItems = [
   { to: '/previews/edu-scheduling', label: '排课组件预览', icon: 'calendar' },
   { to: '/previews/notification-center', label: '站内信预览', icon: 'notification' },
   { to: '/previews/log-center', label: '日志中心预览', icon: 'log' },
+  { to: '/previews/edu-analysis', label: '教务 BI 图表预览', icon: 'analysis' },
 ] as const
 
-type NavigationIconName = typeof navigationItems[number]['icon'] | 'dashboard' | 'device' | 'preview' | 'log'
+type NavigationIconName = typeof navigationItems[number]['icon'] | 'dashboard' | 'device' | 'preview' | 'log' | 'analysis'
 
 function NavigationIcon({ name }: { name: NavigationIconName }) {
   const path = {
@@ -44,6 +45,7 @@ function NavigationIcon({ name }: { name: NavigationIconName }) {
     calendar: 'M5 3v3m14-3v3M4 8h16M5 5h14v15H5zM8 12h3m2 0h3M8 16h3',
     notification: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',
     log: 'M6 3h12v18H6zM9 7h6M9 11h6M9 15h4',
+    analysis: 'M4 20V10m5 10V4m6 16v-7m5 7V7',
     preview: 'M4 5h16v14H4zM8 9h8M8 13h5',
   }[name]
   return (
@@ -84,6 +86,9 @@ export function AppLayout() {
   )
   const [logMenuOpen, setLogMenuOpen] = useState(
     () => window.location.pathname.startsWith('/logs/'),
+  )
+  const [analysisMenuOpen, setAnalysisMenuOpen] = useState(
+    () => window.location.pathname.startsWith('/analysis/'),
   )
   const isComponentPreview = location.pathname.startsWith('/previews/')
   const toggleSidebar = () => {
@@ -202,6 +207,26 @@ export function AppLayout() {
             {eduMenuOpen && (
               <div className="nav-submenu">
                 <NavLink to="/edu/scheduling" title={sidebarCollapsed ? '实验室排课' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">实验室排课</span></NavLink>
+              </div>
+            )}
+          </div>
+          <div className="nav-group" data-open={analysisMenuOpen}>
+            <button
+              type="button"
+              className={location.pathname.startsWith('/analysis/') ? 'active' : ''}
+              aria-expanded={analysisMenuOpen}
+              title={sidebarCollapsed ? 'BI 分析' : undefined}
+              onClick={() => setAnalysisMenuOpen((open) => !open)}
+            >
+              <NavigationIcon name="analysis" />
+              <span className="sidebar-label">BI 分析</span>
+              <NavigationDisclosureIndicator open={analysisMenuOpen} />
+            </button>
+            {analysisMenuOpen && (
+              <div className="nav-submenu">
+                <NavLink to="/analysis/education" title={sidebarCollapsed ? '教务数据' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">教务数据</span></NavLink>
+                <NavLink to="/analysis/air-condition" title={sidebarCollapsed ? '空调数据（即将接入）' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">空调数据 <small className="nav-coming-soon">待接入</small></span></NavLink>
+                <NavLink to="/analysis/energy" title={sidebarCollapsed ? '用电数据（即将接入）' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">用电数据 <small className="nav-coming-soon">待接入</small></span></NavLink>
               </div>
             )}
           </div>

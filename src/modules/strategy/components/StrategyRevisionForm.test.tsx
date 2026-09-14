@@ -37,6 +37,7 @@ const revision: RuntimeRevision = {
     actionGroupId: '打开空调',
     deviceConditionGroupId: '高温条件',
     timeConditionGroupId: '始终满足',
+    triggerMode: 'EDGE',
     actions: [{
       type: 'Control',
       control: {
@@ -91,6 +92,30 @@ describe('StrategyRevisionForm', () => {
       />,
     )
     expect(screen.getAllByRole('option', { name: '当前筛选外 · air-1' }).length).toBeGreaterThan(0)
+  })
+
+  it('edits and serializes the action-group trigger mode', async () => {
+    const onChange = vi.fn()
+    render(
+      <StrategyRevisionForm
+        initialValue={revision}
+        mode="edit"
+        devices={devices}
+        onChange={onChange}
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('触发模式'), {
+      target: { value: 'RECONCILE' },
+    })
+
+    expect(screen.getByText(/持续协调：/)).toBeInTheDocument()
+    await waitFor(() => {
+      const latest = onChange.mock.calls.at(-1)?.[0] as RuntimeRevision
+      expect(latest.actionGroups[0].triggerMode).toBe('RECONCILE')
+    })
   })
 
   it('creates and edits report actions with searchable members', async () => {

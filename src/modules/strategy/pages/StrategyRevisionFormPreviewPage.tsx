@@ -38,6 +38,7 @@ const initialRevision: RuntimeRevision = {
     actionGroupId: '打开空调',
     deviceConditionGroupId: '室温过高',
     timeConditionGroupId: '工作日晚间',
+    triggerMode: 'RECONCILE',
     actions: [{
       type: 'Control',
       control: {

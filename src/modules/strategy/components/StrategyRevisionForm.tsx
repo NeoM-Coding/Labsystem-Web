@@ -883,6 +883,7 @@ function ActionGroups({ devices, listMembers }: { devices: Device[]; listMembers
             actionGroupId: nextName('执行动作', next.actionGroups.map((group) => group.actionGroupId)),
             deviceConditionGroupId: next.deviceConditionGroups[0]?.groupId ?? '',
             timeConditionGroupId: next.timeConditionGroups[0]?.groupId ?? '',
+            triggerMode: 'EDGE',
             actions: [],
           })
         })} className={`${smallButton} shrink-0 bg-[#147a56] text-white`}>添加动作组</button>
@@ -891,7 +892,7 @@ function ActionGroups({ devices, listMembers }: { devices: Device[]; listMembers
       <div className="grid gap-4">
         {draft.actionGroups.map((group, groupIndex) => (
           <article key={groupIndex} className="rounded-[18px] border border-[#d8e3de] bg-[#f4f8f6] p-4">
-            <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-3 max-[1080px]:grid-cols-2 max-sm:grid-cols-1">
+            <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] items-end gap-3 max-[1280px]:grid-cols-2 max-sm:grid-cols-1">
               <label className="grid min-w-0 gap-1 text-[11px] font-bold text-[#75847d]">动作组名称
                 <input value={group.actionGroupId} onChange={(event) => update((next) => { next.actionGroups[groupIndex].actionGroupId = event.target.value })} className={fieldClass} />
               </label>
@@ -905,10 +906,18 @@ function ActionGroups({ devices, listMembers }: { devices: Device[]; listMembers
                   {draft.timeConditionGroups.map((item) => <option key={item.groupId} value={item.groupId}>{item.groupId}</option>)}
                 </select>
               </label>
+              <label className="grid min-w-0 gap-1 text-[11px] font-bold text-[#75847d]">触发模式
+                <select value={group.triggerMode ?? 'EDGE'} onChange={(event) => update((next) => { next.actionGroups[groupIndex].triggerMode = event.target.value as 'EDGE' | 'RECONCILE' })} className={fieldClass}>
+                  <option value="EDGE">边沿触发</option>
+                  <option value="RECONCILE">持续协调</option>
+                </select>
+              </label>
               <button type="button" onClick={() => update((next) => { next.actionGroups.splice(groupIndex, 1) })} className={`${smallButton} mb-0.5 bg-red-50 text-red-700`}>删除组</button>
             </div>
             <p className="mt-3 mb-3 rounded-xl bg-[#e5f2ec] px-3 py-2 text-xs font-semibold text-[#31604f]">
-              当“{group.deviceConditionGroupId || '未选择'}”并且“{group.timeConditionGroupId || '未选择'}”满足时执行
+              {group.triggerMode === 'RECONCILE'
+                ? `持续协调：“${group.deviceConditionGroupId || '未选择'}”与“${group.timeConditionGroupId || '未选择'}”满足时，每次相关设备状态上报都会重新检查；控制后自动查询条件设备。`
+                : `边沿触发：“${group.deviceConditionGroupId || '未选择'}”与“${group.timeConditionGroupId || '未选择'}”从不满足变为满足时执行一次。`}
             </p>
             {group.actions.length === 0 ? (
               <EmptyGroupHint>尚未设置动作。可以添加设备控制或通知动作。</EmptyGroupHint>

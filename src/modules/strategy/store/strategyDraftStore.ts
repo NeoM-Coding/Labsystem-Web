@@ -50,6 +50,7 @@ function withKeys(revision: RuntimeRevision): StrategyDraft {
     ...clone(revision),
     actionGroups: revision.actionGroups.map((group) => ({
       ...group,
+      triggerMode: group.triggerMode ?? 'EDGE',
       actions: group.actions.map((action) => ({ ...action, _key: id('action') })),
     })),
   }
@@ -124,6 +125,7 @@ export function createStrategyDraft(revision: RuntimeRevision | null): StrategyD
       actionGroupId: '执行动作 1',
       deviceConditionGroupId: deviceGroup.groupId,
       timeConditionGroupId: timeGroup.groupId,
+      triggerMode: 'EDGE',
       actions: [],
     }],
   }
@@ -289,6 +291,9 @@ export function validateStrategyDraft(draft: StrategyDraft): StrategyValidationI
     const path = `action-group-${groupIndex}`
     if (!deviceGroupIds.has(group.deviceConditionGroupId)) issues.push({ path, message: '请选择有效的设备条件组' })
     if (!timeGroupIds.has(group.timeConditionGroupId)) issues.push({ path, message: '请选择有效的时间条件组' })
+    if (group.triggerMode !== 'EDGE' && group.triggerMode !== 'RECONCILE') {
+      issues.push({ path, message: '请选择有效的触发模式' })
+    }
     if (group.actions.length === 0) issues.push({ path, message: '请至少添加一个动作' })
     group.actions.forEach((action, actionIndex) => {
       const actionPath = `${path}-action-${actionIndex}`
@@ -329,6 +334,7 @@ export function serializeStrategyDraft(draft: StrategyDraft): RuntimeRevision {
       actionGroupId: group.actionGroupId.trim(),
       deviceConditionGroupId: group.deviceConditionGroupId,
       timeConditionGroupId: group.timeConditionGroupId,
+      triggerMode: group.triggerMode ?? 'EDGE',
       actions: group.actions.map((action) => {
         const serialized = clone(action) as Partial<DraftAction>
         delete serialized._key

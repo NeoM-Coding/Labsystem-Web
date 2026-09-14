@@ -44,6 +44,7 @@ const previewStrategies: RuntimeRevision[] = [{
     actionGroupId: 'cooling-action',
     deviceConditionGroupId: 'room-temperature',
     timeConditionGroupId: 'night-window',
+    triggerMode: 'RECONCILE',
     actions: [{
       type: 'Control',
       control: {

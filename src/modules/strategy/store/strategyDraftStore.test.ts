@@ -22,6 +22,7 @@ describe('strategyDraftStore', () => {
     expect(draft.actionGroups[0]).toMatchObject({
       deviceConditionGroupId: '始终满足',
       timeConditionGroupId: '始终满足',
+      triggerMode: 'EDGE',
     })
   })
 
@@ -47,6 +48,7 @@ describe('strategyDraftStore', () => {
     const revision = serializeStrategyDraft(draft)
     expect(revision.deviceConditionGroups[0].conditions[0].value).toBe('Heating')
     expect(revision.actionGroups[0].actions[0]).not.toHaveProperty('_key')
+    expect(revision.actionGroups[0].triggerMode).toBe('EDGE')
   })
 
   it('validates cross-midnight windows but rejects equal times', () => {

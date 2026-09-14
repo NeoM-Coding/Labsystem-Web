@@ -30,7 +30,7 @@ const previewStrategy = async (runtimeId: string) => ({
   runtimeId, enabled: true, activeFrom: null, activeUntil: null,
   deviceConditionGroups: [{ groupId: 'room-temperature', conditions: [] }],
   timeConditionGroups: [{ groupId: 'night-window', conditions: [] }],
-  actionGroups: [{ actionGroupId: 'cooling-action', deviceConditionGroupId: 'room-temperature', timeConditionGroupId: 'night-window', actions: [] }],
+  actionGroups: [{ actionGroupId: 'cooling-action', deviceConditionGroupId: 'room-temperature', timeConditionGroupId: 'night-window', triggerMode: 'RECONCILE' as const, actions: [] }],
 })
 
 const previewUsers = async () => [{ id: 'user-1', name: '张管理员', username: 'admin', email: 'admin@example.edu.cn' }]

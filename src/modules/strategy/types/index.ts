@@ -5,6 +5,7 @@ export type LogicType = 'AND' | 'OR'
 export type StrategyOperator = 'EQ' | 'NE' | 'GT' | 'GE' | 'ST' | 'SE'
 export type TimeConditionType = 'WINDOW' | 'TIME_POINT'
 export type ReportType = 'SMS' | 'SMTP'
+export type TriggerMode = 'EDGE' | 'RECONCILE'
 
 export interface DeviceCondition {
   conditionId: string
@@ -65,6 +66,7 @@ export interface ActionGroup {
   actionGroupId: string
   deviceConditionGroupId: string
   timeConditionGroupId: string
+  triggerMode: TriggerMode
   actions: StrategyAction[]
 }
 

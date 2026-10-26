@@ -272,7 +272,7 @@ export function validateStrategyDraft(draft: StrategyDraft): StrategyValidationI
         if (!condition.startTime || !condition.endTime) issues.push({ path, message: '请设置完整时间段' })
         else if (condition.startTime === condition.endTime) issues.push({ path, message: '开始和结束时间不能相同' })
       } else {
-        issues.push({ path, message: '不再支持时间点，请删除或改为时间段' })
+        if (!condition.timePoint) issues.push({ path, message: '请设置时间点' })
       }
     })
   })

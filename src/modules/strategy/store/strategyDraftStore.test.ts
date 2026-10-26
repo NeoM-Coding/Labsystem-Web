@@ -92,7 +92,7 @@ describe('strategyDraftStore', () => {
       reportTypes: ['SMS'],
     })
   })
-  it('rejects legacy time points instead of silently publishing them', () => {
+  it('accepts time points and requires their time', () => {
     const draft = createStrategyDraft(null)
     draft.runtimeId = 'legacy'
     draft.timeConditionGroups[0].conditions.push({
@@ -102,7 +102,9 @@ describe('strategyDraftStore', () => {
       startTime: null,
       endTime: null,
     })
-    expect(validateStrategyDraft(draft).some((issue) => issue.message.includes('不再支持时间点'))).toBe(true)
+    expect(validateStrategyDraft(draft).some((issue) => issue.message.includes('时间点'))).toBe(false)
+    draft.timeConditionGroups[0].conditions[0].timePoint = null
+    expect(validateStrategyDraft(draft).some((issue) => issue.message.includes('请设置时间点'))).toBe(true)
   })
 
 })

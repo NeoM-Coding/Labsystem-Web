@@ -118,7 +118,7 @@ function clockValue(value: string | null) {
 }
 
 function clockPayload(value: string) {
-  return value ? `${value}:00` : null
+  return value ? (value.length === 5 ? `${value}:00` : value) : null
 }
 
 function Section({
@@ -406,22 +406,21 @@ function TimeConditionCard({
       : [...item.weekdays, value]
   })
 
-  if (condition.type !== 'WINDOW') {
-    return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-        <p role="alert" className="text-sm text-red-700">不再支持时间点，请删除此条件，需要限制时间时重新添加时间段。</p>
-        <button type="button" onClick={onRemove} className={`${smallButton} mt-3 bg-white text-red-700`}>删除不支持的条件</button>
-      </div>
-    )
-  }
-
   return (
     <div className="rounded-2xl border border-[#dde6e2] bg-[#fbfcfb] p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="grid size-7 place-items-center rounded-lg bg-[#e4f3ed] text-[11px] font-extrabold text-[#176d4f]">{index + 1}</span>
           {index > 0 && <span className="rounded-lg bg-[#edf7f3] px-2 py-1 text-[11px] font-extrabold text-[#176d4f]">或者</span>}
-          <span className="text-xs font-bold text-[#176d4f]">时间段</span>
+          <select aria-label="时间条件类型" value={condition.type} className={fieldClass}
+            onChange={(event) => onUpdate((item) => {
+              item.type = event.target.value as TimeCondition['type']
+              if (item.type === 'TIME_POINT') { item.timePoint ??= '21:00:00'; item.startTime = null; item.endTime = null }
+              else { item.startTime ??= '08:00:00'; item.endTime ??= '18:00:00'; item.timePoint = null }
+            })}>
+            <option value="WINDOW">时间段</option>
+            <option value="TIME_POINT">时间点</option>
+          </select>
         </div>
         <button type="button" onClick={onRemove} className={`${smallButton} bg-red-50 text-red-700`}>删除</button>
       </div>
@@ -453,14 +452,16 @@ function TimeConditionCard({
           })}
         </div>
       </fieldset>
-      <div className="mt-3 grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+      {condition.type === 'WINDOW' ? <div className="mt-3 grid grid-cols-2 gap-3 max-sm:grid-cols-1">
         <label className="grid gap-1 text-[11px] font-bold text-[#75847d]">开始时间
           <input type="time" value={clockValue(condition.startTime)} onChange={(event) => onUpdate((item) => { item.startTime = clockPayload(event.target.value) })} className={fieldClass} />
         </label>
         <label className="grid gap-1 text-[11px] font-bold text-[#75847d]">结束时间
           <input type="time" value={clockValue(condition.endTime)} onChange={(event) => onUpdate((item) => { item.endTime = clockPayload(event.target.value) })} className={fieldClass} />
         </label>
-      </div>
+      </div> : <label className="mt-3 grid gap-1 text-[11px] font-bold text-[#75847d]">指定时间点
+        <input type="time" step="1" value={condition.timePoint ?? ''} onChange={(event) => onUpdate((item) => { item.timePoint = clockPayload(event.target.value) })} className={fieldClass} />
+      </label>}
       <details className="mt-3 rounded-xl bg-[#f0f5f2] px-3 py-2 text-xs text-[#66776f]">
         <summary className="cursor-pointer font-bold">高级设置 · 时区</summary>
         <label className="mt-3 grid gap-1 text-[11px] font-bold text-[#75847d]">IANA 时区
@@ -544,7 +545,7 @@ function TimeGroups({ defaultZoneId }: { defaultZoneId: string }) {
                 onClick={() => update((next) => { next.timeConditionGroups[groupIndex].conditions.push(createEmptyTimeCondition(defaultZoneId)) })}
                 className={`${smallButton} mt-3 bg-[#e2f2eb] text-[#146c4d]`}
               >
-                ＋ 添加时间段
+                ＋ 添加时间条件
               </button>
             </article>
           )

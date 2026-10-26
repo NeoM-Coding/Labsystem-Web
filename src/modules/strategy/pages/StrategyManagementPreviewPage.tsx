@@ -37,7 +37,6 @@ const previewStrategies: RuntimeRevision[] = [{
       zoneId: 'Asia/Shanghai',
       startTime: '18:00:00',
       endTime: '23:00:00',
-      timePoint: null,
     }],
   }],
   actionGroups: [{

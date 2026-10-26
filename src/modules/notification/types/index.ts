@@ -4,7 +4,7 @@ export type RuleActionStatus = 'SUCCESS' | 'FAILED' | 'NOT_IMPLEMENTED'
 
 export interface RuleActionResult {
   index: number
-  type: 'Control' | 'Report'
+  type: 'Control' | 'Report' | 'Poll'
   targetId: string | null
   userIds: string[]
   reportTypes: string[]

@@ -31,7 +31,8 @@ export interface TimeCondition {
   zoneId: string
   startTime: string | null
   endTime: string | null
-  timePoint: string | null
+  /** 仅用于兼容读取旧规则，时间段编辑器不设置此字段。 */
+  timePoint?: string | null
 }
 
 export interface TimeConditionGroup {

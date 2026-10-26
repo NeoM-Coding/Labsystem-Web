@@ -78,7 +78,6 @@ export function createEmptyTimeCondition(defaultZoneId = 'Asia/Shanghai'): TimeC
     zoneId: defaultZoneId,
     startTime: '08:00:00',
     endTime: '18:00:00',
-    timePoint: null,
   }
 }
 
@@ -272,8 +271,8 @@ export function validateStrategyDraft(draft: StrategyDraft): StrategyValidationI
       if (condition.type === 'WINDOW') {
         if (!condition.startTime || !condition.endTime) issues.push({ path, message: '请设置完整时间段' })
         else if (condition.startTime === condition.endTime) issues.push({ path, message: '开始和结束时间不能相同' })
-      } else if (!condition.timePoint) {
-        issues.push({ path, message: '请设置执行时间点' })
+      } else {
+        issues.push({ path, message: '不再支持时间点，请删除或改为时间段' })
       }
     })
   })

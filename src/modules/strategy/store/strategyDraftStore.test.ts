@@ -43,6 +43,7 @@ describe('strategyDraftStore', () => {
       field: 'mode',
       value: 'Heating',
     })
+    expect(createEmptyTimeCondition()).not.toHaveProperty('timePoint')
     draft.timeConditionGroups[0].conditions.push(createEmptyTimeCondition())
     draft.actionGroups[0].actions.push(createEmptyControlAction('AirCondition'))
     const revision = serializeStrategyDraft(draft)
@@ -91,4 +92,17 @@ describe('strategyDraftStore', () => {
       reportTypes: ['SMS'],
     })
   })
+  it('rejects legacy time points instead of silently publishing them', () => {
+    const draft = createStrategyDraft(null)
+    draft.runtimeId = 'legacy'
+    draft.timeConditionGroups[0].conditions.push({
+      ...createEmptyTimeCondition(),
+      type: 'TIME_POINT',
+      timePoint: '08:00:00',
+      startTime: null,
+      endTime: null,
+    })
+    expect(validateStrategyDraft(draft).some((issue) => issue.message.includes('不再支持时间点'))).toBe(true)
+  })
+
 })

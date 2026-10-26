@@ -406,38 +406,22 @@ function TimeConditionCard({
       : [...item.weekdays, value]
   })
 
+  if (condition.type !== 'WINDOW') {
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+        <p role="alert" className="text-sm text-red-700">不再支持时间点，请删除此条件，需要限制时间时重新添加时间段。</p>
+        <button type="button" onClick={onRemove} className={`${smallButton} mt-3 bg-white text-red-700`}>删除不支持的条件</button>
+      </div>
+    )
+  }
+
   return (
     <div className="rounded-2xl border border-[#dde6e2] bg-[#fbfcfb] p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="grid size-7 place-items-center rounded-lg bg-[#e4f3ed] text-[11px] font-extrabold text-[#176d4f]">{index + 1}</span>
           {index > 0 && <span className="rounded-lg bg-[#edf7f3] px-2 py-1 text-[11px] font-extrabold text-[#176d4f]">或者</span>}
-          <div className="grid grid-cols-2 rounded-xl bg-[#e9efec] p-1">
-            {([
-              ['WINDOW', '时间段'],
-              ['TIME_POINT', '时间点'],
-            ] as const).map(([value, label]) => (
-              <button
-                type="button"
-                key={value}
-                onClick={() => onUpdate((item) => {
-                  item.type = value
-                  if (value === 'WINDOW') {
-                    item.startTime ??= '08:00:00'
-                    item.endTime ??= '18:00:00'
-                    item.timePoint = null
-                  } else {
-                    item.timePoint ??= '08:00:00'
-                    item.startTime = null
-                    item.endTime = null
-                  }
-                })}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-[background-color,color,box-shadow,transform] duration-150 active:scale-[.97] ${condition.type === value ? 'bg-white text-[#176d4f] shadow-sm' : 'text-[#74827c]'}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <span className="text-xs font-bold text-[#176d4f]">时间段</span>
         </div>
         <button type="button" onClick={onRemove} className={`${smallButton} bg-red-50 text-red-700`}>删除</button>
       </div>
@@ -469,21 +453,13 @@ function TimeConditionCard({
           })}
         </div>
       </fieldset>
-      <div className={`mt-3 grid gap-3 ${condition.type === 'WINDOW' ? 'grid-cols-2' : 'grid-cols-1'} max-sm:grid-cols-1`}>
-        {condition.type === 'WINDOW' ? (
-          <>
-            <label className="grid gap-1 text-[11px] font-bold text-[#75847d]">开始时间
-              <input type="time" value={clockValue(condition.startTime)} onChange={(event) => onUpdate((item) => { item.startTime = clockPayload(event.target.value) })} className={fieldClass} />
-            </label>
-            <label className="grid gap-1 text-[11px] font-bold text-[#75847d]">结束时间
-              <input type="time" value={clockValue(condition.endTime)} onChange={(event) => onUpdate((item) => { item.endTime = clockPayload(event.target.value) })} className={fieldClass} />
-            </label>
-          </>
-        ) : (
-          <label className="grid gap-1 text-[11px] font-bold text-[#75847d]">指定时间点
-            <input type="time" value={clockValue(condition.timePoint)} onChange={(event) => onUpdate((item) => { item.timePoint = clockPayload(event.target.value) })} className={fieldClass} />
-          </label>
-        )}
+      <div className="mt-3 grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+        <label className="grid gap-1 text-[11px] font-bold text-[#75847d]">开始时间
+          <input type="time" value={clockValue(condition.startTime)} onChange={(event) => onUpdate((item) => { item.startTime = clockPayload(event.target.value) })} className={fieldClass} />
+        </label>
+        <label className="grid gap-1 text-[11px] font-bold text-[#75847d]">结束时间
+          <input type="time" value={clockValue(condition.endTime)} onChange={(event) => onUpdate((item) => { item.endTime = clockPayload(event.target.value) })} className={fieldClass} />
+        </label>
       </div>
       <details className="mt-3 rounded-xl bg-[#f0f5f2] px-3 py-2 text-xs text-[#66776f]">
         <summary className="cursor-pointer font-bold">高级设置 · 时区</summary>
@@ -568,7 +544,7 @@ function TimeGroups({ defaultZoneId }: { defaultZoneId: string }) {
                 onClick={() => update((next) => { next.timeConditionGroups[groupIndex].conditions.push(createEmptyTimeCondition(defaultZoneId)) })}
                 className={`${smallButton} mt-3 bg-[#e2f2eb] text-[#146c4d]`}
               >
-                ＋ 添加时间条件
+                ＋ 添加时间段
               </button>
             </article>
           )
@@ -916,7 +892,7 @@ function ActionGroups({ devices, listMembers }: { devices: Device[]; listMembers
             </div>
             <p className="mt-3 mb-3 rounded-xl bg-[#e5f2ec] px-3 py-2 text-xs font-semibold text-[#31604f]">
               {group.triggerMode === 'RECONCILE'
-                ? `持续协调：“${group.deviceConditionGroupId || '未选择'}”与“${group.timeConditionGroupId || '未选择'}”满足时，每次相关设备状态上报都会重新检查；控制后自动查询条件设备。`
+                ? `持续协调：“${group.deviceConditionGroupId || '未选择'}”与“${group.timeConditionGroupId || '未选择'}”满足时，每次相关设备状态上报都会重新检查。`
                 : `边沿触发：“${group.deviceConditionGroupId || '未选择'}”与“${group.timeConditionGroupId || '未选择'}”从不满足变为满足时执行一次。`}
             </p>
             {group.actions.length === 0 ? (

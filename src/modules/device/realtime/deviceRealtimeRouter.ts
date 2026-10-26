@@ -129,7 +129,7 @@ export function routeRealtimeMessage(
       || !Array.isArray(data.actions)
       || data.actions.some((action) => !isObject(action)
         || typeof action.index !== 'number'
-        || (action.type !== 'Control' && action.type !== 'Report')
+        || (action.type !== 'Control' && action.type !== 'Report' && action.type !== 'Poll')
         || (action.targetId !== null && typeof action.targetId !== 'string')
         || !Array.isArray(action.userIds)
         || action.userIds.some((id) => typeof id !== 'string')

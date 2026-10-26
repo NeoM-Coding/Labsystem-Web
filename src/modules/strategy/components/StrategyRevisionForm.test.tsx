@@ -152,4 +152,29 @@ describe('StrategyRevisionForm', () => {
       })
     })
   })
+  it('offers only windows and keeps unsupported legacy conditions removable', () => {
+    const legacy: RuntimeRevision = {
+      ...revision,
+      timeConditionGroups: [{
+        groupId: '始终满足',
+        conditions: [{
+          conditionId: 'old-point', type: 'TIME_POINT', startDate: null, endDate: null,
+          weekdays: [], zoneId: 'Asia/Shanghai', startTime: null, endTime: null, timePoint: '08:00:00',
+        }],
+      }],
+    }
+    render(<StrategyRevisionForm initialValue={legacy} mode="edit" devices={devices}
+      onChange={vi.fn()} onCancel={vi.fn()} onSubmit={vi.fn()} />)
+    expect(screen.getByRole('alert')).toHaveTextContent('不再支持时间点')
+    expect(screen.queryByRole('button', { name: '时间点' })).not.toBeInTheDocument()
+    expect(screen.queryByText('指定时间点')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '改为时间段' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '删除不支持的条件' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /添加时间段/ }))
+    expect(screen.getByText('开始时间')).toBeInTheDocument()
+    expect(screen.getByText('结束时间')).toBeInTheDocument()
+    expect(screen.queryByText('指定时间点')).not.toBeInTheDocument()
+  })
+
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { commandsFor, initialArgs } from './commandCatalog'
+import { commandArgsAreValid, commandsFor, initialArgs } from './commandCatalog'
 
 describe('air-condition command catalog', () => {
   it('keeps semantic slider labels mapped to protocol values', () => {
@@ -34,6 +34,18 @@ describe('air-condition command catalog', () => {
 })
 
 describe('access command catalog', () => {
+  it('maps valve and panel independently to 00/11/FF in protocol order', () => {
+    const command = commandsFor('Access').find((item) => item.commandLine === 'ENHANCE_CONTROL_ACCESS')!
+    expect(command.inputs.map((input) => input.label)).toEqual(['磁通阀', '控制面板'])
+    expect(initialArgs(command)).toEqual([17, 17])
+    for (const valve of [0, 17, 255]) {
+      for (const panel of [0, 17, 255]) expect(commandArgsAreValid(command, [valve, panel])).toBe(true)
+    }
+    for (const args of [[], [0], [0, 255, 0], [1, 0], [0, 1], [11, 255], [255, 11], [-1, 0], [0, 256], [0.5, 255]]) {
+      expect(commandArgsAreValid(command, args)).toBe(false)
+    }
+  })
+
   it('defines the closing delay in seconds and limits it to 255 seconds', () => {
     const command = commandsFor('Access').find(
       (item) => item.commandLine === 'SET_ACCESS_DELAY',

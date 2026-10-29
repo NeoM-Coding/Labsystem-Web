@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Device } from '@/modules/device/types'
 import type { RuntimeRevision } from '../types'
@@ -78,6 +78,31 @@ describe('StrategyRevisionForm', () => {
       const latest = onChange.mock.calls.at(-1)?.[0] as RuntimeRevision
       expect(latest.actionGroups[0].deviceConditionGroupId).toBe('制热状态')
       expect(latest.deviceConditionGroups[0].conditions[0].value).toBe('Heating')
+    })
+  })
+
+  it('edits enhanced access action parameters in protocol order', async () => {
+    const onChange = vi.fn()
+    const accessRevision: RuntimeRevision = {
+      ...revision,
+      actionGroups: [{
+        ...revision.actionGroups[0],
+        actions: [{
+          type: 'Control',
+          control: { commandLine: 'ENHANCE_CONTROL_ACCESS', type: 'Access', deviceId: 'access-1', args: [255, 255] },
+          userIds: [], reportTypes: [], content: null,
+        }],
+      }],
+    }
+    render(<StrategyRevisionForm initialValue={accessRevision} mode="edit"
+      devices={[{ ...devices[0], id: 'access-1', deviceType: 'Access' }]}
+      onChange={onChange} onCancel={vi.fn()} onSubmit={vi.fn()} />)
+    fireEvent.click(within(screen.getByRole('group', { name: '控制面板' })).getByRole('button', { name: '禁用' }))
+    await waitFor(() => {
+      const latest = onChange.mock.calls.at(-1)?.[0] as RuntimeRevision
+      expect(latest.actionGroups[0].actions[0].control).toMatchObject({
+        commandLine: 'ENHANCE_CONTROL_ACCESS', type: 'Access', args: [255, 0],
+      })
     })
   })
 

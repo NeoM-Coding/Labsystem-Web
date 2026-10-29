@@ -14,6 +14,16 @@ const commands: Record<DeviceType, DeviceCommandSpec[]> = {
       tone: 'normal',
       inputs: [{ name: 'delay', label: '延时时间', unit: '秒', min: 0, max: 255 }],
     },
+    {
+      commandLine: 'ENHANCE_CONTROL_ACCESS',
+      label: '门禁状态控制',
+      description: '分别设置磁通阀和控制面板；选择“保持原状”时不改变该项当前状态。',
+      tone: 'caution',
+      inputs: [
+        { name: 'fluxValve', label: '磁通阀', options: [{ value: 17, label: '保持原状' }, { value: 255, label: '开启' }, { value: 0, label: '关闭' }] },
+        { name: 'controlPanel', label: '控制面板', options: [{ value: 17, label: '保持原状' }, { value: 255, label: '启用' }, { value: 0, label: '禁用' }] },
+      ],
+    },
     { commandLine: 'REQUEST_ACCESS_DATA', label: '刷新门禁状态', description: '主动请求一次门禁当前状态。', tone: 'normal', inputs: [] },
   ],
   AirCondition: [

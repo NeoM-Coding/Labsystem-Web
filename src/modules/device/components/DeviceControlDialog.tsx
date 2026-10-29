@@ -358,7 +358,7 @@ export function DeviceControlDialog({
                   ) : (
                     <div className="grid gap-3">
                       {selected.inputs.map((input, index) => {
-                        const Control = input.name === 'opened' || input.name === 'mode' || input.name === 'speed'
+                        const Control = input.name === 'opened' || input.name === 'mode' || input.name === 'speed' || input.name === 'fluxValve' || input.name === 'controlPanel'
                           ? ParameterSwitcher
                           : ParameterSlider
                         return (

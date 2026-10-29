@@ -10,16 +10,17 @@ type CapturedRequest = DeviceControlRequest & {
 }
 
 export default function DeviceControlPreviewPage() {
-  const [mode, setMode] = useState<'single' | 'multi' | null>(null)
+  const [mode, setMode] = useState<'single' | 'multi' | 'access' | null>(null)
   const [lastRequest, setLastRequest] = useState<CapturedRequest | null>(null)
   const [lastResults, setLastResults] = useState<DeviceCommandResult[]>([])
   const air = previewDevices.find((device) => device.deviceType === 'AirCondition')
+  const access = previewDevices.filter((device) => device.deviceType === 'Access')
   const lights = previewDevices.filter((device) => device.deviceType === 'Light')
   const dataSource = useMemo(() => createPreviewControlDataSource((request, results) => {
     setLastRequest(request)
     setLastResults(results)
   }), [])
-  const targets = mode === 'single' ? (air ? [air] : []) : lights
+  const targets = mode === 'single' ? (air ? [air] : []) : mode === 'access' ? access : lights
 
   return (
     <div>
@@ -49,6 +50,15 @@ export default function DeviceControlPreviewPage() {
           <span className="text-xs font-extrabold text-[#18825c]">MULTI</span>
           <strong className="mt-2 block text-lg">批量控制两台照明</strong>
           <span className="mt-1 block text-sm text-[#74837c]">用于检查同类型目标和逐台执行结果。</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('access')}
+          className="rounded-2xl border border-[#dce7e2] bg-white p-6 text-left shadow-[0_8px_28px_rgb(17_48_38_/_5%)] transition-[border-color,transform] duration-150 hover:border-[#a9cfbf] active:scale-[.98]"
+        >
+          <span className="text-xs font-extrabold text-[#18825c]">ACCESS</span>
+          <strong className="mt-2 block text-lg">控制门禁</strong>
+          <span className="mt-1 block text-sm text-[#74837c]">预览磁通阀、控制面板的三态选择，默认保持原状；输出参数顺序为磁通阀、控制面板。</span>
         </button>
       </div>
 

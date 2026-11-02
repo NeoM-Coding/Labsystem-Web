@@ -1,28 +1,26 @@
-const metrics = [
-  { label: '实验室总数', value: '--', hint: '等待数据接入' },
-  { label: '设备总数', value: '--', hint: '等待数据接入' },
-  { label: '今日预约', value: '--', hint: '等待数据接入' },
-  { label: '待处理事项', value: '--', hint: '等待数据接入' },
-]
+import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useAuthStore } from '@/modules/auth/store/authStore'
+import { getDashboard } from '../api/dashboard'
+import { DashboardOverview } from '../components/DashboardOverview'
 
 export default function DashboardPage() {
-  return (
-    <div>
-      <div className="page-heading">
-        <div><p className="eyebrow">OVERVIEW</p><h1>工作台</h1></div>
-        <p className="muted">实验室资源与运行情况概览</p>
-      </div>
-      <section className="metric-grid">
-        {metrics.map((item) => (
-          <article className="metric-card" key={item.label}>
-            <p>{item.label}</p><strong>{item.value}</strong><small>{item.hint}</small>
-          </article>
-        ))}
-      </section>
-      <section className="content-card">
-        <h2>模块接入区</h2>
-        <p className="muted">后续可按业务域增加实验室、设备、预约、耗材和权限管理模块。</p>
-      </section>
-    </div>
-  )
+  const userId = useAuthStore((state) => state.user?.id)
+  const [search, setSearch] = useState('')
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 10_000)
+    return () => window.clearInterval(timer)
+  }, [])
+  const query = useQuery({
+    queryKey: ['dashboard', userId],
+    queryFn: ({ signal }) => getDashboard(signal),
+    enabled: Boolean(userId),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: 'always',
+    placeholderData: undefined,
+  })
+  return <DashboardOverview data={query.data} now={now} search={search} onSearchChange={setSearch}
+    loading={query.isPending} refreshing={query.isFetching} error={query.isError ? '请稍后点击刷新重试' : undefined}
+    updatedAt={query.dataUpdatedAt} onRefresh={() => { void query.refetch() }} />
 }

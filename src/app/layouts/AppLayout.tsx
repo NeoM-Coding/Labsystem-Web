@@ -14,6 +14,7 @@ import { NotificationCenter } from '@/modules/notification/components/Notificati
 import { useNotificationStore } from '@/modules/notification/store/notificationStore'
 
 const navigationItems = [
+  { to: '/previews/dashboard', label: '概览组件预览', icon: 'grid' },
   { to: '/previews/api-errors', label: 'API 异常预览', icon: 'log' },
   { to: '/previews/laboratory-filter', label: '筛选栏预览', icon: 'filter' },
   { to: '/previews/device-switch-bars', label: '设备切换栏预览', icon: 'switch' },

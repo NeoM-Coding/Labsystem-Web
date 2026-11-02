@@ -6,7 +6,6 @@ const keep = { value: 255, label: '保持不变' }
 const commands: Record<DeviceType, DeviceCommandSpec[]> = {
   Access: [
     { commandLine: 'OPEN_ACCESS_ONCE', label: '单次开门', description: '立即打开门禁一次。', tone: 'normal', inputs: [] },
-    { commandLine: 'CLOSE_ACCESS_ONCE', label: '单次关门', description: '立即关闭门禁一次。', tone: 'caution', inputs: [] },
     {
       commandLine: 'SET_ACCESS_DELAY',
       label: '设置关门延时',
@@ -20,8 +19,8 @@ const commands: Record<DeviceType, DeviceCommandSpec[]> = {
       description: '分别设置磁通阀和控制面板；选择“保持原状”时不改变该项当前状态。',
       tone: 'caution',
       inputs: [
-        { name: 'fluxValve', label: '磁通阀', options: [{ value: 17, label: '保持原状' }, { value: 255, label: '开启' }, { value: 0, label: '关闭' }] },
-        { name: 'controlPanel', label: '控制面板', options: [{ value: 17, label: '保持原状' }, { value: 255, label: '启用' }, { value: 0, label: '禁用' }] },
+        { name: 'fluxValve', label: '门锁状态', options: [{ value: 17, label: '保持' }, { value: 255, label: '长开' }, { value: 0, label: '长关' }] },
+        { name: 'controlPanel', label: '锁定状态', options: [{ value: 17, label: '保持' }, { value: 255, label: '锁定' }, { value: 0, label: '解锁' }] },
       ],
     },
     { commandLine: 'REQUEST_ACCESS_DATA', label: '刷新门禁状态', description: '主动请求一次门禁当前状态。', tone: 'normal', inputs: [] },

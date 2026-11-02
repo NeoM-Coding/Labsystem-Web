@@ -97,7 +97,7 @@ describe('StrategyRevisionForm', () => {
     render(<StrategyRevisionForm initialValue={accessRevision} mode="edit"
       devices={[{ ...devices[0], id: 'access-1', deviceType: 'Access' }]}
       onChange={onChange} onCancel={vi.fn()} onSubmit={vi.fn()} />)
-    fireEvent.click(within(screen.getByRole('group', { name: '控制面板' })).getByRole('button', { name: '禁用' }))
+    fireEvent.click(within(screen.getByRole('group', { name: '锁定状态' })).getByRole('button', { name: '解锁' }))
     await waitFor(() => {
       const latest = onChange.mock.calls.at(-1)?.[0] as RuntimeRevision
       expect(latest.actionGroups[0].actions[0].control).toMatchObject({

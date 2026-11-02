@@ -36,7 +36,7 @@ describe('air-condition command catalog', () => {
 describe('access command catalog', () => {
   it('maps valve and panel independently to 00/11/FF in protocol order', () => {
     const command = commandsFor('Access').find((item) => item.commandLine === 'ENHANCE_CONTROL_ACCESS')!
-    expect(command.inputs.map((input) => input.label)).toEqual(['磁通阀', '控制面板'])
+    expect(command.inputs.map((input) => input.label)).toEqual(['门锁状态', '锁定状态'])
     expect(initialArgs(command)).toEqual([17, 17])
     for (const valve of [0, 17, 255]) {
       for (const panel of [0, 17, 255]) expect(commandArgsAreValid(command, [valve, panel])).toBe(true)

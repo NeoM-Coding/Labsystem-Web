@@ -18,8 +18,8 @@ describe('enhanced access control', () => {
     render(<DeviceControlDialog open targets={batch ? [access, { ...access, id: 'access-2' }] : [access]}
       dataSource={{ single, multi }} onClose={vi.fn()} />)
     fireEvent.click(screen.getByRole('radio', { name: '门禁状态控制' }))
-    fireEvent.click(within(screen.getByRole('radiogroup', { name: '磁通阀' })).getByRole('radio', { name: '关闭' }))
-    expect(within(screen.getByRole('radiogroup', { name: '控制面板' })).getByRole('radio', { name: '保持原状' }))
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: '门锁状态' })).getByRole('radio', { name: '长关' }))
+    expect(within(screen.getByRole('radiogroup', { name: '锁定状态' })).getByRole('radio', { name: '保持' }))
       .toHaveAttribute('aria-checked', 'true')
     fireEvent.click(screen.getByRole('button', { name: batch ? '发送至 2 台' : '发送指令' }))
     await waitFor(() => expect(batch ? multi : single).toHaveBeenCalledWith({

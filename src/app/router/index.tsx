@@ -66,6 +66,7 @@ const AirConditionAnalysisPage = lazy(
 const EnergyAnalysisPage = lazy(
   () => import('@/modules/analysis/pages/EnergyAnalysisPage'),
 )
+const TelemetryAnalysisPreviewPage = lazy(() => import('@/modules/analysis/pages/TelemetryAnalysisPreviewPage'))
 const EduAnalysisPreviewPage = lazy(
   () => import('@/modules/analysis/pages/EduAnalysisPreviewPage'),
 )
@@ -104,6 +105,7 @@ export const router = createBrowserRouter([
           { path: 'analysis/education', element: render(<EduAnalysisPage />) },
           { path: 'analysis/air-condition', element: render(<AirConditionAnalysisPage />) },
           { path: 'analysis/energy', element: render(<EnergyAnalysisPage />) },
+          { path: 'previews/telemetry-analysis', element: render(<TelemetryAnalysisPreviewPage />) },
           {
             path: 'previews/laboratory-filter',
             element: render(<LaboratoryFilterPreviewPage />),

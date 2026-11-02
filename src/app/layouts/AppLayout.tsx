@@ -28,6 +28,7 @@ const navigationItems = [
   { to: '/previews/edu-scheduling', label: '排课组件预览', icon: 'calendar' },
   { to: '/previews/notification-center', label: '站内信预览', icon: 'notification' },
   { to: '/previews/log-center', label: '日志中心预览', icon: 'log' },
+  { to: '/previews/telemetry-analysis', label: '空调与用电 BI 预览', icon: 'analysis' },
   { to: '/previews/edu-analysis', label: '教务 BI 图表预览', icon: 'analysis' },
 ] as const
 
@@ -228,8 +229,8 @@ export function AppLayout() {
             {analysisMenuOpen && (
               <div className="nav-submenu">
                 <NavLink to="/analysis/education" title={sidebarCollapsed ? '教务数据' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">教务数据</span></NavLink>
-                <NavLink to="/analysis/air-condition" title={sidebarCollapsed ? '空调数据（即将接入）' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">空调数据 <small className="nav-coming-soon">待接入</small></span></NavLink>
-                <NavLink to="/analysis/energy" title={sidebarCollapsed ? '用电数据（即将接入）' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">用电数据 <small className="nav-coming-soon">待接入</small></span></NavLink>
+                <NavLink to="/analysis/air-condition" title={sidebarCollapsed ? '空调运行统计' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">空调运行统计</span></NavLink>
+                <NavLink to="/analysis/energy" title={sidebarCollapsed ? '能耗数据统计' : undefined}><span className="nav-submenu-dot" /><span className="sidebar-label">能耗数据统计</span></NavLink>
               </div>
             )}
           </div>

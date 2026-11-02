@@ -70,3 +70,24 @@ export const importTimetables = (
     '导入课表失败',
   )
 }
+
+export async function downloadTimetableTemplate() {
+  const { data } = await http.get<Blob>('/edu/timetables/import-template', { responseType: 'blob' })
+  downloadExcel(data, '课表导入模板.xlsx')
+}
+
+export async function exportTimetables(semesterId: string, laboratoryIds: string[]) {
+  const params = new URLSearchParams({ semesterId })
+  laboratoryIds.forEach((id) => params.append('laboratoryIds', id))
+  const { data } = await http.get<Blob>('/edu/timetables/export', { params, responseType: 'blob', timeout: 30_000 })
+  downloadExcel(data, '实验室课表-打印版.xlsx')
+}
+
+function downloadExcel(data: Blob, filename: string) {
+  const url = URL.createObjectURL(data)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}

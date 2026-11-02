@@ -78,6 +78,42 @@ describe('TimetableGrid', () => {
     expect(screen.queryByText('星期一')).not.toBeInTheDocument()
   })
 
+  it('keeps course, teachers and week information visible for adjacent single-section cards', () => {
+    const single: Timetable = {
+      ...course,
+      courseName: '人工智能与Python程序设计（实验）',
+      teacherName: '张慧丽、王晓明',
+      endSection: 1,
+      endTime: '08:45:00',
+    }
+    const double: Timetable = {
+      ...single,
+      id: 'course-double',
+      courseName: 'BiomedicalImageProcessing实验',
+      teacherName: '欧阳老师',
+      weekType: 'Double',
+      startWeek: 2,
+    }
+    const onOpen = vi.fn()
+    render(<TimetableGrid timetables={[single, double]} laboratories={[laboratory]} onOpen={onOpen} onDelete={vi.fn()} />)
+
+    for (const timetable of [single, double]) {
+      expect(screen.getByText(timetable.courseName)).toBeVisible()
+      expect(screen.getByText(timetable.teacherName)).toBeVisible()
+      expect(screen.getByText(timetable.courseName)).not.toHaveClass('truncate')
+      expect(screen.getByText(timetable.teacherName)).not.toHaveClass('truncate')
+    }
+    expect(screen.getByText('1–16 周 · 单周')).toBeVisible()
+    expect(screen.getByText('2–16 周 · 双周')).toBeVisible()
+    const block = screen.getByRole('button', { name: /人工智能与Python程序设计/ })
+    fireEvent.keyDown(block, { key: 'Enter' })
+    expect(onOpen).toHaveBeenCalledWith(single)
+    fireEvent.click(screen.getByText('管理'))
+    expect(screen.getByText(single.teacherName)).toBeVisible()
+    expect(screen.getByText('1–16 周 · 单周')).toBeVisible()
+    expect(screen.getByRole('button', { name: `删除 ${single.courseName}` })).toBeVisible()
+  })
+
   it('renders each section as a row and merges a multi-section course into one grid block', () => {
     const longCourse: Timetable = {
       ...course,

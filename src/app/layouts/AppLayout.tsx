@@ -24,6 +24,7 @@ const navigationItems = [
   { to: '/previews/account-management', label: '用户管理预览', icon: 'user' },
   { to: '/previews/strategy-management', label: '策略管理预览', icon: 'strategy' },
   { to: '/previews/strategy-revision-form', label: '策略动态表单预览', icon: 'strategy' },
+  { to: '/previews/edu-timetable-import', label: '课表导入组件预览', icon: 'calendar' },
   { to: '/previews/edu-scheduling', label: '排课组件预览', icon: 'calendar' },
   { to: '/previews/notification-center', label: '站内信预览', icon: 'notification' },
   { to: '/previews/log-center', label: '日志中心预览', icon: 'log' },

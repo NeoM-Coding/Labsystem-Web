@@ -77,6 +77,10 @@ const timetables: Timetable[] = [
   course('course-ai-b', '机器学习', '陈老师', laboratories[1].id, laboratories[1].laboratoryName, 1, '08:00:00', '09:40:00', 9, 16, 'Both'),
   course('course-db', '数据库系统', '赵老师', laboratories[0].id, laboratories[0].laboratoryName, 3, '10:00:00', '11:40:00', 1, 16, 'Both'),
   course('course-iot', '物联网工程', '周老师', laboratories[1].id, laboratories[1].laboratoryName, 5, '15:05:00', '19:25:00', 3, 14, 'Both'),
+  course('course-wrap-single', '人工智能与Python程序设计（实验）', '张慧丽、王晓明', laboratories[0].id, laboratories[0].laboratoryName, 2, '08:00:00', '11:40:00', 1, 16, 'Single'),
+  course('course-wrap-double', '计算传播学（跨学科综合实验）', '李成华', laboratories[0].id, laboratories[0].laboratoryName, 2, '08:00:00', '11:40:00', 2, 16, 'Double'),
+  course('course-wrap-short', '医学影像信息处理与分析（实验）', '刘海华、陈老师', laboratories[1].id, laboratories[1].laboratoryName, 4, '10:00:00', '10:45:00', 1, 8, 'Single'),
+  course('course-wrap-short-double', 'BiomedicalImageProcessing实验', '欧阳老师', laboratories[1].id, laboratories[1].laboratoryName, 4, '10:00:00', '10:45:00', 2, 8, 'Double'),
 ]
 
 const dataSource: LaboratoryFilterDataSource = {
@@ -98,7 +102,7 @@ export default function SchedulingPreviewPage() {
     <div>
       <div className="page-heading">
         <div><p className="eyebrow">COMPONENT PREVIEW</p><h1>排课工作区</h1></div>
-        <p>确定性数据：{timetableCount} 条课程 · 同时段多实验室横向对比</p>
+        <p>确定性数据：{timetableCount} 条课程 · 长课程名、并排单双周、单节课程自适应换行</p>
       </div>
       <SchedulingWorkspace
         preview

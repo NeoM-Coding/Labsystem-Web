@@ -49,6 +49,8 @@ const StrategyManagementPreviewPage = lazy(
 const StrategyRevisionFormPreviewPage = lazy(
   () => import('@/modules/strategy/pages/StrategyRevisionFormPreviewPage'),
 )
+const TimetableImportPage = lazy(() => import("@/modules/edu/pages/TimetableImportPage"))
+const TimetableImportPreviewPage = lazy(() => import("@/modules/edu/pages/TimetableImportPreviewPage"))
 const SchedulingPage = lazy(() => import('@/modules/edu/pages/SchedulingPage'))
 const SchedulingPreviewPage = lazy(() => import('@/modules/edu/pages/SchedulingPreviewPage'))
 const NotificationCenterPreviewPage = lazy(
@@ -94,6 +96,8 @@ export const router = createBrowserRouter([
           { path: 'laboratories/manage', element: render(<LaboratoryManagementPage />) },
           { path: 'strategies', element: render(<StrategyManagementPage />) },
           { path: 'accounts', element: render(<AccountManagementPage />) },
+          { path: 'edu/scheduling/import', element: render(<TimetableImportPage />) },
+          { path: 'previews/edu-timetable-import', element: render(<TimetableImportPreviewPage />) },
           { path: 'edu/scheduling', element: render(<SchedulingPage />) },
           { path: 'logs/audit', element: render(<AuditLogPage />) },
           { path: 'logs/alerts', element: render(<AlertLogPage />) },

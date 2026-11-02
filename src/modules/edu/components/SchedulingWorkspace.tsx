@@ -1,17 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { localErrorMessage } from '@/shared/api/apiErrors'
+import { useEffect, useMemo, useState } from 'react'
 import {
   LaboratoryFilterBar,
   type LaboratoryFilterDataSource,
 } from '@/modules/laboratory/components/LaboratoryFilterBar'
 import { useLaboratoryFilterStore } from '@/modules/laboratory/store/laboratoryFilterStore'
-import { clearTimetables, importTimetables } from '../api/edu'
+import { clearTimetables, exportTimetables } from '../api/edu'
 import { useEduStore } from '../store/eduStore'
 import type {
   Semester,
   SemesterDraft,
   Timetable,
   TimetableDraft,
-  TimetableImportResult,
 } from '../types'
 import { SemesterManager } from './SemesterManager'
 import { TimetableEditor } from './TimetableEditor'
@@ -30,6 +31,9 @@ export function SchedulingWorkspace({
   filterQueryScope = 'edu-scheduling',
   initiallySelectAllLaboratories = false,
 }: SchedulingWorkspaceProps) {
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const targetLaboratoryId = params.get('laboratoryId')
   const semesters = useEduStore((state) => state.semesters)
   const timetablesById = useEduStore((state) => state.timetablesById)
   const semesterStatus = useEduStore((state) => state.semesterStatus)
@@ -37,23 +41,27 @@ export function SchedulingWorkspace({
   const storeError = useEduStore((state) => state.error)
   const laboratoryIds = useLaboratoryFilterStore((state) => state.laboratoryIds)
   const matchedLaboratories = useLaboratoryFilterStore((state) => state.matchedLaboratories)
-  const [semesterId, setSemesterId] = useState('')
+  const [semesterId, setSemesterId] = useState(params.get('semesterId') ?? '')
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Timetable | null | undefined>(undefined)
   const [deleting, setDeleting] = useState<Timetable | null>(null)
   const [semesterManagerOpen, setSemesterManagerOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [importResult, setImportResult] = useState<TimetableImportResult | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!initiallySelectAllLaboratories) {
+    if (!initiallySelectAllLaboratories && !targetLaboratoryId) {
       const filterStore = useLaboratoryFilterStore.getState()
       filterStore.clearFilters()
       filterStore.clearLaboratorySelection()
     }
-  }, [initiallySelectAllLaboratories])
+  }, [initiallySelectAllLaboratories, targetLaboratoryId])
+
+  useEffect(() => {
+    if (targetLaboratoryId && matchedLaboratories.some((lab) => lab.id === targetLaboratoryId)) {
+      useLaboratoryFilterStore.getState().setLaboratoryIds([targetLaboratoryId])
+    }
+  }, [matchedLaboratories, targetLaboratoryId])
 
   useEffect(() => {
     if (preview || semesterStatus !== 'idle') return
@@ -124,7 +132,7 @@ export function SchedulingWorkspace({
       else await useEduStore.getState().deleteTimetable(deleting.id)
       setDeleting(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '删除排课失败')
+      setError(localErrorMessage(cause, '删除排课失败'))
     } finally {
       setBusy(false)
     }
@@ -159,33 +167,10 @@ export function SchedulingWorkspace({
       else await useEduStore.getState().deleteSemester(semester.id)
       if (semesterId === semester.id) setSemesterId('')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '删除学期失败')
+      setError(localErrorMessage(cause, '删除学期失败'))
       throw cause
     } finally {
       setBusy(false)
-    }
-  }
-
-  const handleImport = async (file: File) => {
-    if (laboratoryIds.length !== 1) {
-      setError('导入前请在实验室筛选中只选择一个目标实验室')
-      return
-    }
-    if (!semesterId) {
-      setError('请先选择学期')
-      return
-    }
-    setBusy(true)
-    setError(null)
-    try {
-      const result = await importTimetables(file, semesterId, laboratoryIds[0])
-      setImportResult(result)
-      await useEduStore.getState().loadTimetables(semesterId, laboratoryIds)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '导入课表失败')
-    } finally {
-      setBusy(false)
-      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -201,7 +186,20 @@ export function SchedulingWorkspace({
       await clearTimetables(semesterId, laboratoryIds[0])
       await useEduStore.getState().loadTimetables(semesterId, laboratoryIds)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '清空课表失败')
+      setError(localErrorMessage(cause, '清空课表失败'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleExport = async () => {
+    if (busy || !semesterId || !laboratoryIds.length) return
+    setBusy(true)
+    setError(null)
+    try {
+      await exportTimetables(semesterId, laboratoryIds)
+    } catch (cause) {
+      setError(localErrorMessage(cause, '导出课表失败'))
     } finally {
       setBusy(false)
     }
@@ -214,7 +212,7 @@ export function SchedulingWorkspace({
         queryScope={filterQueryScope}
         embedded
         selectAllOnResolve={initiallySelectAllLaboratories}
-        selectFirstOnResolve={!initiallySelectAllLaboratories}
+        selectFirstOnResolve={!initiallySelectAllLaboratories && !targetLaboratoryId}
       />
       <div className="mt-4 rounded-3xl border border-[#dce6e1] bg-white p-4 shadow-[0_10px_34px_rgb(17_48_38_/_5%)]">
         <div className="flex flex-wrap items-center gap-3">
@@ -232,11 +230,8 @@ export function SchedulingWorkspace({
           <div className="mt-auto flex flex-wrap gap-2">
             <button type="button" onClick={() => setSemesterManagerOpen(true)} className="rounded-xl bg-[#edf3f0] px-3.5 py-3 text-xs font-bold text-[#315046] active:scale-[.97]">管理学期</button>
             {!preview && <>
-              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) void handleImport(file)
-              }} />
-              <button type="button" disabled={busy} onClick={() => fileInputRef.current?.click()} className="rounded-xl bg-[#edf3f0] px-3.5 py-3 text-xs font-bold text-[#315046] active:scale-[.97] disabled:opacity-50">导入 Excel</button>
+              <button type="button" disabled={busy || !semesterId || !laboratoryIds.length} onClick={() => void handleExport()} title="每个实验室一张表，A3 横向打印；导出完整课表，不受搜索词影响" className="rounded-xl bg-[#edf3f0] px-3.5 py-3 text-xs font-bold text-[#315046] disabled:opacity-50">导出打印 Excel</button>
+              <button type="button" disabled={busy} onClick={() => navigate(`/edu/scheduling/import?${new URLSearchParams({ semesterId, ...(laboratoryIds.length === 1 ? { laboratoryId: laboratoryIds[0] } : {}) })}`)} className="rounded-xl bg-[#edf3f0] px-3.5 py-3 text-xs font-bold text-[#315046] disabled:opacity-50">导入 Excel</button>
               <button type="button" disabled={busy} onClick={() => void handleClear()} className="rounded-xl px-3.5 py-3 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50">清空课表</button>
             </>}
             <button type="button" disabled={!semesterId || !matchedLaboratories.length} onClick={() => setEditing(null)} className="rounded-xl bg-[#147a56] px-4 py-3 text-xs font-bold text-white shadow-[0_8px_20px_rgb(20_122_86_/_18%)] active:scale-[.97] disabled:opacity-45">新增排课</button>
@@ -286,16 +281,6 @@ export function SchedulingWorkspace({
             <h2 className="m-0 text-xl">删除“{deleting.courseName}”？</h2>
             <p className="mt-3 text-sm leading-6 text-[#677870]">{deleting.teacherName} · {deleting.startWeek}–{deleting.endWeek} 周。删除后无法恢复。</p>
             <div className="mt-6 flex justify-end gap-3"><button type="button" disabled={busy} onClick={() => setDeleting(null)} className="rounded-xl bg-[#edf3f0] px-4 py-2.5 text-sm font-bold">取消</button><button type="button" disabled={busy} onClick={() => void removeTimetable()} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white active:scale-[.97] disabled:opacity-50">{busy ? '正在删除…' : '确认删除'}</button></div>
-          </div>
-        </div>
-      )}
-      {importResult && (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-[#092018]/30 p-5 backdrop-blur-[3px]" role="dialog" aria-modal="true" aria-label="课表导入结果">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-[0_24px_80px_rgb(8_39_29_/_25%)]">
-            <h2 className="m-0 text-xl">导入完成</h2>
-            <p className="mt-2 text-sm text-[#677870]">成功 {importResult.ok} 条，失败 {importResult.fail} 条。</p>
-            {importResult.errors.length > 0 && <div className="mt-4 max-h-56 overflow-y-auto rounded-xl bg-red-50 p-3">{importResult.errors.map((item, index) => <p key={`${item.rowIndex}-${item.columnIndex}-${index}`} className="m-0 border-b border-red-100 py-2 text-xs text-red-800 last:border-0">第 {item.rowIndex + 1} 行，第 {item.columnIndex + 1} 列：{item.reason}</p>)}</div>}
-            <div className="mt-5 flex justify-end"><button type="button" onClick={() => setImportResult(null)} className="rounded-xl bg-[#147a56] px-4 py-2.5 text-sm font-bold text-white">完成</button></div>
           </div>
         </div>
       )}

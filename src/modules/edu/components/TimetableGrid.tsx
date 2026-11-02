@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Laboratory } from '@/modules/laboratory/types'
 import {
   layoutTimetables,
@@ -33,6 +33,7 @@ function CourseBlock({
   positioned,
   gridColumn,
   deleteMode,
+  onMinimumRowHeight,
   onOpen,
   onEnterDeleteMode,
   onDelete,
@@ -40,18 +41,48 @@ function CourseBlock({
   positioned: PositionedTimetable
   gridColumn: number
   deleteMode: boolean
+  onMinimumRowHeight: (id: string, height: number) => void
   onOpen: (timetable: Timetable) => void
   onEnterDeleteMode: () => void
   onDelete: (timetable: Timetable) => void
 }) {
   const { timetable, startSection, endSection, lane, laneCount } = positioned
   const timerRef = useRef<number | null>(null)
+  const blockRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   const originRef = useRef({ x: 0, y: 0 })
   const longPressedRef = useRef(false)
   const [pressing, setPressing] = useState(false)
   const [background, foreground, border] = colorFor(`${timetable.courseName}-${timetable.laboratoryId}`)
   const sectionSpan = endSection - startSection + 1
-  const showDetails = sectionSpan >= 2 && laneCount === 1
+
+  useLayoutEffect(() => {
+    const block = blockRef.current
+    const content = contentRef.current
+    if (!block || !content) return
+
+    const fitContent = () => {
+      if (!block.clientWidth) return
+      // Measure the readable minimum independently of current row height, so
+      // expanding a short row never creates a resize/compression feedback loop.
+      content.style.fontSize = '0.625rem'
+      content.style.gap = '1px'
+      const minimumHeight = content.scrollHeight
+      onMinimumRowHeight(timetable.id, Math.ceil((minimumHeight + 18) / sectionSpan))
+
+      for (const [fontSize, gap, padding] of [[0.75, 3, 6], [0.6875, 2, 4], [0.625, 1, 4]]) {
+        content.style.fontSize = `${fontSize}rem`
+        content.style.gap = `${gap}px`
+        block.style.paddingBlock = `${padding}px`
+        if (content.scrollHeight <= block.clientHeight - padding * 2) break
+      }
+    }
+    fitContent()
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fitContent)
+    observer?.observe(block)
+    observer?.observe(content)
+    return () => observer?.disconnect()
+  }, [timetable.id, timetable.courseName, timetable.teacherName, timetable.startWeek, timetable.endWeek, timetable.weekType, sectionSpan, deleteMode, onMinimumRowHeight])
 
   const cancelLongPress = () => {
     if (timerRef.current !== null) window.clearTimeout(timerRef.current)
@@ -96,10 +127,11 @@ function CourseBlock({
 
   return (
     <div
+      ref={blockRef}
       role={deleteMode ? undefined : 'button'}
       tabIndex={deleteMode ? -1 : 0}
       aria-label={`${timetable.courseName}，${timetable.laboratoryName ?? '实验室'}，${WEEKDAYS[timetable.weekday - 1]}，${timetableSectionLabel(timetable)}`}
-      className={`relative z-10 my-1 self-stretch select-none overflow-hidden rounded-[11px] border px-2 py-1.5 text-left shadow-[0_4px_12px_rgb(20_54_42_/_7%)] transition-[transform,box-shadow,filter] duration-150 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#48a17f]/35 motion-reduce:transition-none ${
+      className={`relative z-10 my-1 min-h-0 min-w-0 self-stretch select-none rounded-[11px] border px-2 py-1.5 text-left shadow-[0_4px_12px_rgb(20_54_42_/_7%)] transition-[transform,box-shadow,filter] duration-150 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#48a17f]/35 motion-reduce:transition-none ${
         pressing ? 'scale-[.975] brightness-[.98]' : 'hover:-translate-y-px hover:shadow-[0_7px_17px_rgb(20_54_42_/_12%)]'
       } ${deleteMode ? 'pr-7' : ''}`}
       style={{
@@ -136,15 +168,13 @@ function CourseBlock({
           ×
         </button>
       )}
-      <strong className="block truncate text-[12px] leading-5" title={timetable.courseName}>{timetable.courseName}</strong>
-      {showDetails && (
-        <>
-          <span className="block truncate text-[10px] font-semibold opacity-78" title={timetable.teacherName}>{timetable.teacherName}</span>
-          <span className="block truncate text-[9px] font-bold opacity-68">
+      <div ref={contentRef} className="flex min-w-0 flex-col gap-[3px] whitespace-normal text-[0.75rem] leading-[1.3] [line-break:anywhere] [overflow-wrap:anywhere]">
+          <strong className="block font-bold" title={timetable.courseName}>{timetable.courseName}</strong>
+          <span className="block text-[max(0.625rem,0.92em)] font-semibold" title={timetable.teacherName}>{timetable.teacherName}</span>
+          <span className="block text-[max(0.625rem,0.85em)] font-semibold">
             {timetable.startWeek}–{timetable.endWeek} 周 · {WEEK_TYPE_LABELS[timetable.weekType]}
           </span>
-        </>
-      )}
+      </div>
     </div>
   )
 }
@@ -165,6 +195,10 @@ export function TimetableGrid({
   onDelete,
 }: TimetableGridProps) {
   const [deleteMode, setDeleteMode] = useState(false)
+  const [minimumRowHeights, setMinimumRowHeights] = useState<Record<string, number>>({})
+  const recordMinimumRowHeight = useCallback((id: string, height: number) => {
+    setMinimumRowHeights((current) => current[id] === height ? current : { ...current, [id]: height })
+  }, [])
   const positioned = useMemo(
     () => laboratories.flatMap((laboratory) =>
       layoutTimetables(timetables.filter((timetable) => timetable.laboratoryId === laboratory.id))),
@@ -175,11 +209,23 @@ export function TimetableGrid({
     [laboratories],
   )
   const laboratoryCount = laboratories.length
+  const rowHeights = SECTION_SLOTS.map(({ section }) => Math.max(
+    SECTION_ROW_HEIGHT,
+    ...positioned.filter((item) => section >= item.startSection && section <= item.endSection)
+      .map(({ timetable }) => minimumRowHeights[timetable.id] ?? 0),
+  ))
   const subColumnMinWidth = laboratoryCount > 1 ? 112 : 150
-  const gridTemplateColumns = `104px repeat(${WEEKDAYS.length * laboratoryCount}, minmax(${subColumnMinWidth}px, 1fr))`
+  // A parallel course must retain a readable width rather than collapsing to
+  // two characters per line when several laboratories share the viewport.
+  const columnWidths = WEEKDAYS.flatMap((_, day) => laboratories.map((laboratory) => {
+    const lanes = Math.max(1, ...positioned.filter((item) => item.timetable.weekday === day + 1
+      && item.timetable.laboratoryId === laboratory.id).map((item) => item.laneCount))
+    return Math.max(subColumnMinWidth, lanes * 100)
+  }))
+  const gridTemplateColumns = `104px ${columnWidths.map((width) => `minmax(${width}px, 1fr)`).join(' ')}`
   const timetableMinWidth = Math.max(
     1180,
-    104 + WEEKDAYS.length * laboratoryCount * subColumnMinWidth,
+    104 + columnWidths.reduce((total, width) => total + width, 0),
   )
 
   useEffect(() => {
@@ -259,7 +305,7 @@ export function TimetableGrid({
               className="grid"
               style={{
                 gridTemplateColumns,
-                gridTemplateRows: `repeat(${SECTION_SLOTS.length}, ${SECTION_ROW_HEIGHT}px)`,
+                gridTemplateRows: rowHeights.map((height) => `${height}px`).join(' '),
               }}
             >
               {SECTION_SLOTS.map((slot) => (
@@ -303,6 +349,7 @@ export function TimetableGrid({
                       + laboratoryIndex
                     }
                     deleteMode={deleteMode}
+                    onMinimumRowHeight={recordMinimumRowHeight}
                     onOpen={onOpen}
                     onEnterDeleteMode={() => setDeleteMode(true)}
                     onDelete={onDelete}

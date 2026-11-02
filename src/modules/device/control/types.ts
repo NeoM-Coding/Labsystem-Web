@@ -48,6 +48,7 @@ export interface MqttResponse {
 }
 
 export interface DeviceCommandResult {
+  code?: number
   deviceId: string
   success: boolean
   response: MqttResponse | null

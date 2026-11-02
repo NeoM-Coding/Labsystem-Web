@@ -7,6 +7,7 @@ import {
   RequireSession,
 } from '@/modules/auth/components/SessionRoutes'
 
+const ApiErrorsPreviewPage = lazy(() => import('@/modules/errors/pages/ApiErrorsPreviewPage'))
 const DashboardPage = lazy(() => import('@/modules/dashboard/pages/DashboardPage'))
 const LoginPage = lazy(() => import('@/modules/auth/pages/LoginPage'))
 const NotFoundPage = lazy(() => import('@/modules/errors/pages/NotFoundPage'))
@@ -87,6 +88,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="/dashboard" replace /> },
           { path: 'dashboard', element: render(<DashboardPage />) },
+          { path: 'previews/api-errors', element: render(<ApiErrorsPreviewPage />) },
           { path: 'devices', element: render(<DeviceCenterPage />) },
           { path: 'devices/manage', element: render(<DeviceManagementPage />) },
           { path: 'laboratories/manage', element: render(<LaboratoryManagementPage />) },

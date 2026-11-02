@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { useEffect, useMemo, useState } from 'react'
 import type { Laboratory } from '@/modules/laboratory/types'
 import { useDeviceStore } from '../store/deviceStore'
@@ -148,7 +149,7 @@ function ManagementEditor({
         })
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '保存失败')
+      setError(localErrorMessage(cause, '保存失败'))
     }
   }
 
@@ -294,7 +295,7 @@ export function DeviceManagement({
       setGateways(nextGateways.filter((gateway) => gateway.gatewayType === 'RS485'))
       setLaboratories(nextLabs)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '设备管理数据加载失败')
+      setError(localErrorMessage(cause, '设备管理数据加载失败'))
     } finally {
       setLoading(false)
     }
@@ -335,7 +336,7 @@ export function DeviceManagement({
       setEditor(null)
       setDeleting(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '操作失败')
+      setError(localErrorMessage(cause, '操作失败'))
       throw cause
     } finally {
       setBusy(false)
@@ -354,7 +355,7 @@ export function DeviceManagement({
         ? { ...item, polling: device.polling }
         : item))
       setStoreDevicePolling(device.id, device.polling)
-      setError(cause instanceof Error ? cause.message : '轮询状态更新失败')
+      setError(localErrorMessage(cause, '轮询状态更新失败'))
     } finally {
       setPollingDeviceIds((ids) => ids.filter((id) => id !== device.id))
     }
@@ -372,7 +373,7 @@ export function DeviceManagement({
         setEditor({ mode: 'gateway', entity: detail })
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '详情加载失败')
+      setError(localErrorMessage(cause, '详情加载失败'))
     } finally {
       setBusy(false)
     }

@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   createContact,
@@ -301,7 +302,7 @@ function AccountEditor({
         await onSaveUser(user)
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '保存失败')
+      setError(localErrorMessage(cause, '保存失败'))
     }
   }
 
@@ -431,7 +432,7 @@ export function AccountManagement({
       setTargetRelations(existing)
       setEditableRelations(new Set(owned.includes('super_admin') ? knownRelations : owned))
     } catch (cause) {
-      setPermissionsError(cause instanceof Error ? cause.message : '权限范围加载失败')
+      setPermissionsError(localErrorMessage(cause, '权限范围加载失败'))
     } finally {
       setPermissionsLoading(false)
     }
@@ -442,7 +443,7 @@ export function AccountManagement({
     try {
       replaceUsers(await dataSource.listUsers())
     } catch (cause) {
-      setStoreError(cause instanceof Error ? cause.message : '加载系统用户失败')
+      setStoreError(localErrorMessage(cause, '加载系统用户失败'))
     }
   }
 

@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { listUsers } from '@/modules/account/api/accounts'
 import { getLaboratoryMembers, replaceLaboratoryViewers } from '../api/laboratories'
@@ -404,7 +405,7 @@ function LaboratoryMembersDialog({
       })
       .catch((cause: unknown) => {
         if (!active) return
-        setError(cause instanceof Error ? cause.message : '实验室成员加载失败')
+        setError(localErrorMessage(cause, '实验室成员加载失败'))
         setStatus('error')
       })
     return () => { active = false }
@@ -431,7 +432,7 @@ function LaboratoryMembersDialog({
       setSelectedIds(updated.viewers.flatMap((member) => member.id ? [member.id] : []))
       setStatus('ready')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '更新实验室可见成员失败')
+      setError(localErrorMessage(cause, '更新实验室可见成员失败'))
       setStatus('ready')
     }
   }
@@ -532,7 +533,7 @@ function LaboratoryEditor({
         .catch((cause: unknown) => {
           if (!active) return
           setMemberStatus('error')
-          setMemberError(cause instanceof Error ? cause.message : '成员加载失败')
+          setMemberError(localErrorMessage(cause, '成员加载失败'))
         })
     }, memberSearch.trim() ? MEMBER_SEARCH_DELAY_MS : 0)
     return () => {
@@ -588,7 +589,7 @@ function LaboratoryEditor({
         manager: draft.manager.filter((manager) => manager.name.trim()),
       })
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '保存失败')
+      setError(localErrorMessage(cause, '保存失败'))
     }
   }
 
@@ -929,7 +930,7 @@ export function LaboratoryManagement({
       }
       setEditing(undefined)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '保存失败')
+      setError(localErrorMessage(cause, '保存失败'))
       throw cause
     } finally {
       setBusy(false)
@@ -945,7 +946,7 @@ export function LaboratoryManagement({
       else await store.remove(deleting.id)
       setDeleting(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '删除失败')
+      setError(localErrorMessage(cause, '删除失败'))
     } finally {
       setBusy(false)
     }

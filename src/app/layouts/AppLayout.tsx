@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/modules/auth/store/authStore'
@@ -13,6 +14,7 @@ import { NotificationCenter } from '@/modules/notification/components/Notificati
 import { useNotificationStore } from '@/modules/notification/store/notificationStore'
 
 const navigationItems = [
+  { to: '/previews/api-errors', label: 'API 异常预览', icon: 'log' },
   { to: '/previews/laboratory-filter', label: '筛选栏预览', icon: 'filter' },
   { to: '/previews/device-switch-bars', label: '设备切换栏预览', icon: 'switch' },
   { to: '/previews/device-data-center', label: '设备中心预览', icon: 'grid' },
@@ -113,7 +115,7 @@ export function AppLayout() {
       clearSession()
       navigate('/login', { replace: true })
     } catch (cause) {
-      setLogoutError(cause instanceof Error ? cause.message : '退出登录失败，请稍后重试')
+      setLogoutError(localErrorMessage(cause, '退出登录失败，请稍后重试'))
       setLoggingOut(false)
     }
   }

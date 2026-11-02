@@ -1,5 +1,4 @@
-import axios from 'axios'
-import { http } from '@/shared/api/http'
+import { http, apiRequest } from '@/shared/api/http'
 import { getLaboratories } from '@/modules/laboratory/api/laboratories'
 import type { Laboratory } from '@/modules/laboratory/types'
 import type { ApiResponse, Device, Gateway } from '../types'
@@ -10,21 +9,7 @@ interface OperationResult {
   s: string
 }
 
-function unwrap<T>(response: ApiResponse<T>): T {
-  if (!response.ok) throw new Error(response.msg || '设备管理请求失败')
-  return response.data
-}
-
-async function request<T>(operation: () => Promise<{ data: ApiResponse<T> }>) {
-  try {
-    return unwrap((await operation()).data)
-  } catch (cause) {
-    if (axios.isAxiosError<ApiResponse<unknown>>(cause)) {
-      throw new Error(cause.response?.data?.msg || '设备管理请求失败')
-    }
-    throw cause
-  }
-}
+const request = <T>(operation: () => Promise<{ data: ApiResponse<T> }>) => apiRequest(operation)
 
 function laboratoryParams(laboratoryIds: string[]) {
   const params = new URLSearchParams()
@@ -59,9 +44,7 @@ export const deviceManagementDataSource: DeviceManagementDataSource = {
     () => enabled
       ? http.put<ApiResponse<OperationResult>>(`/mqtt/devices/${deviceId}/polling`)
       : http.delete<ApiResponse<OperationResult>>(`/mqtt/devices/${deviceId}/polling`),
-  ).then((result) => {
-    if (!result.f) throw new Error(result.s || '轮询状态更新失败')
-  }),
+  ).then(() => undefined),
   createGateway: (gateway) => request(
     () => http.post<ApiResponse<Gateway>>('/mqtt/gateways', gateway),
   ),

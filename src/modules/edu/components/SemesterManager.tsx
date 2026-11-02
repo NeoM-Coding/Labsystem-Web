@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { useState } from 'react'
 import type { Semester, SemesterDraft } from '../types'
 
@@ -51,7 +52,7 @@ export function SemesterManager({
       setDraft(emptyDraft())
       setEditing(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '保存学期失败')
+      setError(localErrorMessage(cause, '保存学期失败'))
     }
   }
 
@@ -78,7 +79,7 @@ export function SemesterManager({
             {semesters.map((semester) => (
               <div key={semester.id} className="flex items-center justify-between gap-4 border-b border-[#e5ece8] px-4 py-3 last:border-b-0">
                 <div className="min-w-0"><strong className="block truncate text-sm">{semester.name}</strong><span className="mt-1 block text-xs text-[#7b8a84]">{semester.startDate} 至 {semester.endDate}</span></div>
-                <div className="shrink-0"><button type="button" onClick={() => begin(semester)} className="rounded-lg px-3 py-2 text-xs font-bold text-[#147a56] hover:bg-[#edf4f1]">编辑</button><button type="button" onClick={() => void onDelete(semester).catch((cause: unknown) => setError(cause instanceof Error ? cause.message : '删除学期失败'))} className="rounded-lg px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50">删除</button></div>
+                <div className="shrink-0"><button type="button" onClick={() => begin(semester)} className="rounded-lg px-3 py-2 text-xs font-bold text-[#147a56] hover:bg-[#edf4f1]">编辑</button><button type="button" onClick={() => void onDelete(semester).catch((cause: unknown) => setError(localErrorMessage(cause, '删除学期失败')))} className="rounded-lg px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-50">删除</button></div>
               </div>
             ))}
           </div>

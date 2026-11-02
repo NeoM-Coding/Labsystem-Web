@@ -1,9 +1,4 @@
-export interface ApiResponse<T> {
-  code: number
-  ok: boolean
-  data: T
-  msg: string
-}
+export type { ApiEnvelope as ApiResponse } from '@/shared/api/http'
 
 export interface OptionPair {
   f: string

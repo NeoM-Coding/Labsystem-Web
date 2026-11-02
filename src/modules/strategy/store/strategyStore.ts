@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { create } from 'zustand'
 import {
   createStrategy,
@@ -39,7 +40,7 @@ export const useStrategyStore = create<StrategyState>((set, get) => ({
     } catch (cause) {
       set({
         status: 'error',
-        error: cause instanceof Error ? cause.message : '加载智能策略失败',
+        error: localErrorMessage(cause, '加载智能策略失败'),
       })
       throw cause
     }

@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { create } from 'zustand'
 import {
   createLaboratory,
@@ -33,7 +34,7 @@ export const useLaboratoryStore = create<LaboratoryState>((set) => ({
       const laboratories = await getLaboratories([], [])
       set({ laboratoriesById: index(laboratories), status: 'ready' })
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : '实验室加载失败'
+      const message = localErrorMessage(cause, '实验室加载失败')
       set({ status: 'error', error: message })
       throw cause
     }

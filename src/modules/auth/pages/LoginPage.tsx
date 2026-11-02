@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { FormEvent, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { createSession } from '../api/sessions'
@@ -37,7 +38,7 @@ export default function LoginPage() {
       setSession(session.user)
       navigate(requestedDestination(), { replace: true })
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '登录失败，请稍后重试')
+      setError(localErrorMessage(cause, '登录失败，请稍后重试'))
     } finally {
       setSubmitting(false)
     }

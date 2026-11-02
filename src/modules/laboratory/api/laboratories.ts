@@ -14,9 +14,6 @@ function normalizeLaboratory(laboratory: LaboratoryWriteResponse): Laboratory {
 }
 
 function unwrap<T>(response: ApiResponse<T>): T {
-  if (!response.ok) {
-    throw new Error(response.msg || '请求实验室数据失败')
-  }
   return response.data
 }
 

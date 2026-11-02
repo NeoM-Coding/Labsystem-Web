@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { useCallback, useEffect, useState } from 'react'
 import { listUsers } from '@/modules/account/api/accounts'
 import { getStrategy } from '@/modules/strategy/api/strategies'
@@ -64,7 +65,7 @@ export function AlertLogExplorer({
     try {
       setPage(await loadLogs(query))
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '加载告警日志失败')
+      setError(localErrorMessage(cause, '加载告警日志失败'))
     } finally {
       setLoading(false)
     }
@@ -81,13 +82,13 @@ export function AlertLogExplorer({
       setStrategy(null)
       void loadStrategy(dialog.runtimeId)
         .then((value) => { if (active) setStrategy(value) })
-        .catch((cause: unknown) => { if (active) setDetailError(cause instanceof Error ? cause.message : '加载策略详情失败') })
+        .catch((cause: unknown) => { if (active) setDetailError(localErrorMessage(cause, '加载策略详情失败')) })
         .finally(() => { if (active) setDetailLoading(false) })
     } else {
       setUsers([])
       void loadUsers()
         .then((value) => { if (active) setUsers(value.filter((user) => dialog.userIds.includes(user.id))) })
-        .catch((cause: unknown) => { if (active) setDetailError(cause instanceof Error ? cause.message : '加载用户详情失败') })
+        .catch((cause: unknown) => { if (active) setDetailError(localErrorMessage(cause, '加载用户详情失败')) })
         .finally(() => { if (active) setDetailLoading(false) })
     }
     return () => { active = false }

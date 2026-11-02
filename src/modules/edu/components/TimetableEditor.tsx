@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { useState } from 'react'
 import type { Laboratory } from '@/modules/laboratory/types'
 import { SECTION_SLOTS, sectionsForTime, WEEKDAYS } from '../timetableLayout'
@@ -118,7 +119,7 @@ export function TimetableEditor({
         teacherName: draft.teacherName.trim(),
       })
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '保存排课失败')
+      setError(localErrorMessage(cause, '保存排课失败'))
     }
   }
 

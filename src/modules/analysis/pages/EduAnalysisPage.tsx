@@ -275,7 +275,7 @@ export default function EduAnalysisPage() {
 
       {dashboardQuery.isError && (
         <div className="bi-error" role="alert">
-          <div><strong>教务数据暂时无法加载</strong><p>{dashboardQuery.error.message}</p></div>
+          <div><strong>教务数据暂时无法加载</strong><p>请稍后重试，或调整筛选条件。</p></div>
           <button type="button" onClick={() => void dashboardQuery.refetch()}>重新加载</button>
         </div>
       )}

@@ -7,7 +7,6 @@ import type {
 } from '../types'
 
 function unwrap<T>(response: ApiResponse<T>): T {
-  if (!response.ok) throw new Error(response.msg || '设备数据请求失败')
   return response.data
 }
 

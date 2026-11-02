@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { useEffect, useMemo, useState } from 'react'
 import { deviceControlDataSource } from '../api/deviceControl'
 import { commandArgsAreValid, commandsFor, initialArgs } from '../control/commandCatalog'
@@ -256,7 +257,7 @@ export function DeviceControlDialog({
       setPhase('result')
       onCompleted?.(nextResults)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '指令发送失败')
+      setError(localErrorMessage(cause, '指令发送失败'))
       setPhase('configure')
     }
   }

@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { useCallback, useEffect, useState } from 'react'
 import type { AuditLog, AuditLogLoader, AuditLogQuery, PageResult } from '../types'
 import {
@@ -37,7 +38,7 @@ export function AuditLogExplorer({ loadLogs }: { loadLogs: AuditLogLoader }) {
     try {
       setPage(await loadLogs(query))
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '加载审计日志失败')
+      setError(localErrorMessage(cause, '加载审计日志失败'))
     } finally {
       setLoading(false)
     }

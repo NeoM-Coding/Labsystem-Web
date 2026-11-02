@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import {
   createContext,
   useContext,
@@ -1063,7 +1064,7 @@ function StrategyFormContent({
       await onSubmit(revision)
       markClean()
     } catch (cause) {
-      setSubmitError(cause instanceof Error ? cause.message : '保存策略失败')
+      setSubmitError(localErrorMessage(cause, '保存策略失败'))
     }
   }
 

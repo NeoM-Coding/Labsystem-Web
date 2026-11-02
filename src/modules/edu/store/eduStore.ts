@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { create } from 'zustand'
 import {
   createSemester,
@@ -52,7 +53,7 @@ export const useEduStore = create<EduState>((set) => ({
     } catch (cause) {
       set({
         semesterStatus: 'error',
-        error: cause instanceof Error ? cause.message : '加载学期失败',
+        error: localErrorMessage(cause, '加载学期失败'),
       })
       throw cause
     }
@@ -65,7 +66,7 @@ export const useEduStore = create<EduState>((set) => ({
     } catch (cause) {
       set({
         timetableStatus: 'error',
-        error: cause instanceof Error ? cause.message : '加载课表失败',
+        error: localErrorMessage(cause, '加载课表失败'),
       })
       throw cause
     }

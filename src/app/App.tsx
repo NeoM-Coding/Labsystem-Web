@@ -5,6 +5,7 @@ import { getCurrentSession } from '@/modules/auth/api/sessions'
 import { useAuthStore } from '@/modules/auth/store/authStore'
 import { PageLoader } from '@/shared/components/PageLoader'
 import { queryClient } from '@/shared/lib/queryClient'
+import { ApiErrorNotifications } from '@/shared/components/ApiErrorNotifications'
 import { router } from './router'
 
 export function App() {
@@ -31,6 +32,7 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ApiErrorNotifications />
       {checkingSession
         ? <div className="centered-page"><PageLoader /></div>
         : <RouterProvider router={router} />}

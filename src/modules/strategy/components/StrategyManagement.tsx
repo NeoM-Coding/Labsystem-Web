@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { useEffect, useMemo, useState } from 'react'
 import { useDeviceStore } from '@/modules/device/store/deviceStore'
 import { useStrategyStore } from '../store/strategyStore'
@@ -37,7 +38,7 @@ export function StrategyManagement({ preview = false }: { preview?: boolean }) {
     try {
       await operation()
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '操作失败')
+      setError(localErrorMessage(cause, '操作失败'))
       throw cause
     } finally {
       setPendingIds((ids) => ids.filter((id) => id !== runtimeId))

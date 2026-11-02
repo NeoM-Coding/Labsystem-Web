@@ -1,3 +1,4 @@
+import { localErrorMessage } from '@/shared/api/apiErrors'
 import { create } from 'zustand'
 import { getDevices, getGateways, getTelemetrySnapshots } from '../api/devices'
 import type {
@@ -293,7 +294,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
       }
       set({
         loadStatus: 'error',
-        error: error instanceof Error ? error.message : '设备数据加载失败',
+        error: localErrorMessage(error, '设备数据加载失败'),
       })
     }
   },

@@ -34,7 +34,16 @@ const catalog: Record<DeviceType, readonly DeviceFieldSpec[]> = {
   Access: [
     { field: 'opened', label: '状态', kind: 'boolean', options: openedOptions },
     { field: 'locked', label: '锁定状态', kind: 'boolean', options: booleanOptions },
-    { field: 'lockStatus', label: '门锁状态码', kind: 'number' },
+    {
+      field: 'lockStatus',
+      label: '门锁状态',
+      kind: 'enum',
+      // AccessMessageHandler decodes control bytes 0xFF / 0x00 as telemetry states 1 / 3.
+      options: [
+        { value: '1', label: '长开' },
+        { value: '3', label: '长关' },
+      ],
+    },
     { field: 'delayTime', label: '关门延时', kind: 'number', unit: '秒' },
     { field: 'address', label: '设备地址', kind: 'number' },
   ],
